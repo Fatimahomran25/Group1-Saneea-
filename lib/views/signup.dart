@@ -47,7 +47,7 @@ class _SignupScreenState extends State<SignupScreen> {
     final gap = 12.0;
     final halfW = (formW - gap) / 2;
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 90, 36, 36),
+      backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _bg,
         elevation: 0,
