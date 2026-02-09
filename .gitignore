@@ -1,3 +1,5 @@
+# Android kotlin cache
+android/.kotlin/
 # Miscellaneous
 *.class
 *.log

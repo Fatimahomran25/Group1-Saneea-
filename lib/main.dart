@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'screens/signup_screen.dart';
 
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -40,7 +41,8 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
           ),
-      home: const CreateAccountScreen(),
+      home: const SignupScreen(),
+
     );
   }
 }
