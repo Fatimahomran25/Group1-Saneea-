@@ -40,8 +40,7 @@ dependencies:
   firebase_messaging: ^14.7.10
   cloud_firestore: ^4.15.8
   firebase_storage: ^11.6.8
-  # IPinfo
-  http: ^1.2.0
+  
 
 
 
@@ -73,6 +72,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+
+  
+  fonts:
+    - family: DMSerifDisplay
+      fonts:
+        - asset: assets/fonts/DMSerifDisplay-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
