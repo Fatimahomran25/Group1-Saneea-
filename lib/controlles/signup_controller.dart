@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/signup_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/signup_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignupController {
   final SignupModel model = SignupModel();
@@ -14,8 +15,8 @@ class SignupController {
   final confirmPasswordCtrl = TextEditingController();
 
   // ===== UI/STATE =====
-  bool submitted = false; // هل ضغط Create Account؟
-  String? serverError; // رسالة من Firebase/Firestore (مثل مكرر)
+  bool submitted = false;
+  String? serverError;
 
   // ===== HELPERS =====
   bool _isOnlyLetters(String v) => RegExp(r'^[a-zA-Z]+$').hasMatch(v);
@@ -50,21 +51,17 @@ class SignupController {
     return gmailRegex.hasMatch(v);
   }
 
-  // Password rules (Min 10 + number + special)
-  bool get passHasMin10 => passwordCtrl.text.length >= 10;
-  bool get passHasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
-  bool get passHasSpecial =>
-      RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]').hasMatch(passwordCtrl.text);
-
-  bool get isPasswordStrong => passHasMin10 && passHasNumber && passHasSpecial;
-  bool get isPasswordValid => isPasswordStrong;
-  bool get hasNumber =>
-    RegExp(r'\d').hasMatch(passwordCtrl.text);
+  // Password rules (10 + number + special)
+  bool get hasMinLength => passwordCtrl.text.length >= 10;
+  bool get hasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
+  
+  bool get isPasswordValid => hasMinLength && hasNumber && hasSpecialChar;
+  bool get isPasswordStrong =>
+    hasMinLength && hasNumber && hasSpecialChar;
 
 bool get hasSpecialChar =>
     RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]')
         .hasMatch(passwordCtrl.text);
-
 
   bool get isConfirmPasswordValid =>
       confirmPasswordCtrl.text.isNotEmpty &&
@@ -78,9 +75,6 @@ bool get hasSpecialChar =>
       isEmailValid &&
       isPasswordValid &&
       isConfirmPasswordValid;
-      bool get hasMinLength => passwordCtrl.text.length >= 10;
-
-
 
   // ===== ACTIONS =====
   void setAccountType(AccountType type) {
@@ -100,60 +94,60 @@ bool get hasSpecialChar =>
     confirmPasswordCtrl.dispose();
   }
 
-  Future<void> createAccount(BuildContext context) async {
-    serverError = null;
+  Future<AccountType?> createAccount() async {
+  serverError = null;
+  if (!allRequiredValid) return null;
 
-    // 0) تحقق محلي أول
-    if (!allRequiredValid) return;
+  final nationalId = nationalIdCtrl.text.trim();
+  final firstName  = firstNameCtrl.text.trim();
+  final lastName   = lastNameCtrl.text.trim();
+  final email      = emailCtrl.text.trim();
+  final password   = passwordCtrl.text;
+  final accountType = model.accountType!;
 
-    final nationalId = nationalIdCtrl.text.trim();
-    final firstName = firstNameCtrl.text.trim();
-    final lastName = lastNameCtrl.text.trim();
-    final email = emailCtrl.text.trim();
-    final password = passwordCtrl.text;
-    final accountType = model.accountType; // 👈 هذا الصح
+  try {
+    final existing = await FirebaseFirestore.instance
+        .collection('users')
+        .where('nationalId', isEqualTo: nationalId)
+        .limit(1)
+        .get();
 
-    try {
-      // 1) تحقق الهوية/الإقامة مو مكررة
-      final existing = await FirebaseFirestore.instance
-          .collection('users')
-          .where('nationalId', isEqualTo: nationalId)
-          .limit(1)
-          .get();
+    if (existing.docs.isNotEmpty) {
+      serverError = "National ID / Iqama already exists.";
+      return null;
+    }
 
-      if (existing.docs.isNotEmpty) {
-        serverError = "National ID / Iqama already exists.";
-        return;
-      }
+    final credential = await FirebaseAuth.instance
+        .createUserWithEmailAndPassword(email: email, password: password);
 
-      // 2) إنشاء المستخدم في Auth (هنا Firebase يمنع تكرار الايميل تلقائياً)
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+    final uid = credential.user!.uid;
 
-      final uid = credential.user!.uid;
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'accountType': accountType.name,
+      'nationalId': nationalId,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
-      // 3) تخزين البيانات في Firestore
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'accountType': accountType!.name, // freelancer / client
-        'nationalId': nationalId,
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // نجاح: هنا لاحقًا بنسوي Navigate حسب النوع
-      // if (accountType == AccountType.freelancer) ...
-      // else ...
-
-    } on FirebaseAuthException catch (e) {
-      // رسالة خاصة لتكرار الايميل
+    return accountType; // ✅ هذا الجديد
+  } on FirebaseAuthException catch (e) {
+    serverError = e.code == 'email-already-in-use'
+        ? "Email already exists. Try a different email."
+        : (e.message ?? "Auth error.");
+    return null;
+  } catch (_) {
+    serverError = "Something went wrong. Try again.";
+    return null;
+  }
+   on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         serverError = "Email already exists. Try a different email.";
       } else {
         serverError = e.message ?? "Auth error.";
       }
-    } catch (e) {
+    } catch (_) {
       serverError = "Something went wrong. Try again.";
     }
   }
@@ -162,3 +156,11 @@ bool get hasSpecialChar =>
     Navigator.pushNamed(context, '/login');
   }
 }
+
+
+
+      // TODO: هنا سوي navigation حسب accountType
+      // if (accountType == AccountType.freelancer) ...
+      // else ...
+
+    

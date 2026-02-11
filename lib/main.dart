@@ -3,7 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'views/signup.dart';
 import 'views/login.dart';
-
+import 'views/freelancer_home.dart';
+import 'views/client_home.dart';
+import 'views/intro.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,9 +43,15 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
           ),
-      home: const SignupScreen(),
+        debugShowCheckedModeBanner: false,
+  initialRoute: '/intro',
        routes: {
+        '/intro': (context) => const IntroScreen(),
+        '/signup': (context) => const SignupScreen(),
        '/login': (context) => const login(),
+        '/freelancerHome': (_) => const FreelancerHomeScreen(),
+        '/clientHome': (_) => const ClientHomeScreen(),
+       
        },
 
     );
