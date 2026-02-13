@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../controlles/signup_controller.dart';
 import '../models/signup_model.dart';
@@ -88,14 +87,7 @@ void dispose() {
     final halfW = (formW - gap) / 2;
     return Scaffold(
       backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _textBlack),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -328,7 +320,7 @@ if (showPasswordRules) ...[
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       _PasswordRule(
-        text: "At least 8 characters",
+        text: "At least 10 characters",
         isValid: c.hasMinLength,
         isActive: c.passwordCtrl.text.isNotEmpty,
       ),
@@ -388,8 +380,25 @@ if (showPasswordRules) ...[
                     child: ElevatedButton(
                       onPressed: () async {
   setState(() => c.submit());
-  await c.createAccount(context);
-  setState(() {}); // عشان serverError يبان
+
+  final type = await c.createAccount();
+if (type != null) {
+  if (type == AccountType.freelancer) {
+    Navigator.pushReplacementNamed(context, '/freelancerHome');
+  } else {
+    Navigator.pushReplacementNamed(context, '/clientHome');
+  }
+}
+  setState(() {}); // عشان serverError يظهر
+
+  if (!mounted) return;
+  if (type == null) return; // ❌ لا تنقل إذا فشل
+
+  if (type == AccountType.freelancer) {
+    Navigator.pushReplacementNamed(context, '/freelancerHome');
+  } else {
+    Navigator.pushReplacementNamed(context, '/clientHome');
+  }
 },
 
 
@@ -631,6 +640,7 @@ SizedBox(
       ),
     );
   }
+
 }class _PasswordRule extends StatelessWidget {
   const _PasswordRule({
     required this.text,
@@ -652,13 +662,15 @@ SizedBox(
       color = isValid ? Colors.green : Colors.red;
     }
 
+
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Icon(
             Icons.circle,
-            size:60,
+            size:10,
             color: color,
           ),
           const SizedBox(width: 6),
