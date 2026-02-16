@@ -45,14 +45,14 @@ colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           ),
 
       //home: const SignupScreen(),
-      home: const login(),
+     home: const login(),
 
        
   //initialRoute: '/intro',
 
        routes: {
        // '/intro': (context) => const IntroScreen(),
-        '/signup': (context) => const SignupScreen(),
+        //'/signup': (context) => const SignupScreen(),
        '/login': (context) => const login(),
         '/freelancerHome': (_) => const FreelancerHomeScreen(),
         '/clientHome': (_) => const ClientHomeScreen(),
