@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controlles/login_controller.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'signup.dart';
 
 class login extends StatefulWidget {
@@ -43,10 +45,6 @@ class _loginState extends State<login> {
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
     final formW = (screenW * 0.88).clamp(280.0, 420.0);
-
-    final showPassRules = _passFocus.hasFocus ||
-        (c.passwordCtrl.text.isNotEmpty && !c.isPasswordValid) ||
-        (c.submitted && !c.isPasswordValid);
 
     return Scaffold(
       backgroundColor: _bg,
@@ -110,17 +108,12 @@ class _loginState extends State<login> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          /*'National ID / Iqama',
-                          style: TextStyle(
-                            fontFamily: 'DMSerifDisplay',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w400,
-                            color: _textBlack,*/
+                    
                               'National ID / Iqama',
-  style: TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: Colors.black,
+                         style: TextStyle(
+                         fontSize: 16,
+                         fontWeight: FontWeight.w400,
+                        color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -157,65 +150,7 @@ class _loginState extends State<login> {
                             c.submitted) ...[
                           const SizedBox(height: 8),
 
-                          // Rule 1: 10 digits
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                size: 10,
-                                color: c.nationalIdCtrl.text.length == 10
-                                    ? Colors.green
-                                    : (c.nationalIdCtrl.text.isEmpty
-                                        ? Colors.grey
-                                        : Colors.red),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Must be exactly 10 digits.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: c.nationalIdCtrl.text.length == 10
-                                      ? Colors.green
-                                      : (c.nationalIdCtrl.text.isEmpty
-                                          ? Colors.grey
-                                          : Colors.red),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          // Rule 2: starts with 1 or 2
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                size: 10,
-                                color: (c.nationalIdCtrl.text.startsWith('1') ||
-                                        c.nationalIdCtrl.text.startsWith('2'))
-                                    ? Colors.green
-                                    : (c.nationalIdCtrl.text.isEmpty
-                                        ? Colors.grey
-                                        : Colors.red),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Starts with 1 (ID) or 2 (Iqama).',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: (c.nationalIdCtrl.text.startsWith('1') ||
-                                          c.nationalIdCtrl.text.startsWith('2'))
-                                      ? Colors.green
-                                      : (c.nationalIdCtrl.text.isEmpty
-                                          ? Colors.grey
-                                          : Colors.red),
-                                ),
-                              ),
-                            ],
-                          ),
+                    
                         ],
                       ],
                     ),
@@ -232,8 +167,7 @@ class _loginState extends State<login> {
                         const Text(
                           'Password',
                           style: TextStyle(
-                            fontFamily: 'DMSerifDisplay',
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w400,
                             color: _textBlack,
                           ),
@@ -258,6 +192,7 @@ class _loginState extends State<login> {
                                 borderRadius: BorderRadius.circular(_radiusField),
                                 borderSide: BorderSide.none,
                               ),
+                              
                               suffixIcon: IconButton(
     onPressed: () => setState(() => c.togglePasswordVisibility()),
     icon: Icon(
@@ -269,23 +204,14 @@ class _loginState extends State<login> {
                           ),
                         ),
 
-                        if (showPassRules) ...[
-                          const SizedBox(height: 10),
-                          _RuleRow(
-                              text: 'At least 8 characters', ok: c.hasMinLength),
-                          _RuleRow(text: 'Contains a letter', ok: c.hasLetter),
-                          _RuleRow(text: 'Contains a number', ok: c.hasNumber),
-                          _RuleRow(
-                              text: 'Contains a special character',
-                              ok: c.hasSpecialChar),
-                        ],
-
+            
                         const SizedBox(height: 8),
 
                         Align(
                           alignment: Alignment.centerLeft,
                           child: GestureDetector(     onTap: () {
                           Navigator.pushNamed(context, '/signup');
+                        
 },
   
                             
@@ -306,25 +232,69 @@ class _loginState extends State<login> {
                           width: formW,
                           height: 46,
                           child: ElevatedButton(
-                           onPressed: (c.isLoading || !c.allRequiredValid)
-    ? null
-    : () async {
+                           onPressed: c.isLoading ? null : () async {
         FocusScope.of(context).unfocus(); // يقفل الكيبورد
 
         setState(() => c.submit());
+final nid = c.nationalIdCtrl.text.trim();
+
+setState(() {
+  c.nationalIdError = null;
+  c.passwordError = null;
+});
+
+        if (nid.length != 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enter a 10-digit National ID / Iqama.')),
+          );
+          return;
+        }
+         if (nid.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enter your National ID / Iqama.')),
+          );
+          return;
+        }
+
+        if (c.passwordCtrl.text.trim().isEmpty) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Enter your password.')),
+  );
+  return;
+}
 
         final success = await c.login();
         setState(() {});
 
-        if (success) {
-          Navigator.pushReplacementNamed(context, '/clientHome');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(c.serverError ?? 'Login failed.'),
-            ),
-          );
-        }
+if (success) {
+ final nid = c.nationalIdCtrl.text.trim();
+  final isAdmin = nid == '9999999999';
+
+  if (isAdmin) {
+    Navigator.pushReplacementNamed(context, '/adminHome');
+    return;
+  }
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  final doc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user!.uid)
+      .get();
+
+  final accountType = doc.data()?['accountType'].toString();
+
+  if (accountType == 'freelancer') {
+    Navigator.pushReplacementNamed(context, '/freelancerHome');
+  } else {
+    Navigator.pushReplacementNamed(context, '/clientHome');
+  }
+
+} else {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(c.serverError ?? 'Login failed')),
+  );
+}
       },
 
                             style: ElevatedButton.styleFrom(
@@ -349,7 +319,6 @@ class _loginState extends State<login> {
     : const Text(
         'Log in',
         style: TextStyle(
-         fontFamily: 'DMSerifDisplay',
           fontSize: 20,
           fontWeight: FontWeight.w400,
           color: Colors.white,
@@ -392,7 +361,6 @@ Align(
   ),
 ),
 
-
                       ],
                     ),
                   ),
@@ -406,29 +374,3 @@ Align(
   }
 }
 
-class _RuleRow extends StatelessWidget {
-  final String text;
-  final bool ok;
-  const _RuleRow({required this.text, required this.ok});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(Icons.circle, size: 10, color: ok ? Colors.green : Colors.red),
-          const SizedBox(width: 10),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: ok ? Colors.green : Colors.red,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

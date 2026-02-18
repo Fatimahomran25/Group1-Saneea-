@@ -5,6 +5,7 @@ import 'views/signup.dart';
 import 'views/login.dart';
 import 'views/freelancer_home.dart';
 import 'views/client_home.dart';
+import 'views/admin_home.dart';
 import 'views/intro.dart';
 
 void main() async {
@@ -52,11 +53,11 @@ colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
 
        routes: {
        // '/intro': (context) => const IntroScreen(),
-        //'/signup': (context) => const SignupScreen(),
+        '/signup': (context) => const SignupScreen(),
        '/login': (context) => const login(),
         '/freelancerHome': (_) => const FreelancerHomeScreen(),
         '/clientHome': (_) => const ClientHomeScreen(),
-       
+       '/adminHome': (context) => const AdminHomeScreen(),
        },
 
     );
