@@ -82,21 +82,23 @@ class SignupController {
     return gmailRegex.hasMatch(v);
   }
 
-  /// Password rule #1: minimum length (>= 10).
-  bool get hasMinLength => passwordCtrl.text.length >= 10;
-
-  /// Password rule #2: contains at least one digit.
-  bool get hasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
-
   /// Password rule #3: contains at least one special character.
   bool get hasSpecialChar =>
       RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]').hasMatch(passwordCtrl.text);
 
+  /// Password rule #2: contains at least one digit.
+  bool get hasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
+
+  /// Password rule #0: contains at least 8 letters (A-Z / a-z).
+  bool get hasAtLeast8Letters =>
+      RegExp(r'[A-Za-z]').allMatches(passwordCtrl.text).length >= 8;
+
   /// Overall password validity (must satisfy all rules).
-  bool get isPasswordValid => hasMinLength && hasNumber && hasSpecialChar;
+  bool get isPasswordValid => hasAtLeast8Letters && hasNumber && hasSpecialChar;
 
   /// Same logic as isPasswordValid but named "Strong" for UI display purposes.
-  bool get isPasswordStrong => hasMinLength && hasNumber && hasSpecialChar;
+  bool get isPasswordStrong =>
+      hasAtLeast8Letters && hasNumber && hasSpecialChar;
 
   /// Confirm password must be non-empty and match the original password.
   bool get isConfirmPasswordValid =>

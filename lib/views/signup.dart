@@ -367,7 +367,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Password',
                     width: formW,
                     showError: c.submitted && !c.isPasswordValid,
-                    hintText: 'e.g. pass@123',
+                    hintText: 'e.g. Password@1',
                     focusNode: _passFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
@@ -391,8 +391,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _PasswordRule(
-                          text: "At least 10 characters",
-                          isValid: c.hasMinLength,
+                          text: "Contains at least 8 letters",
+                          isValid: c.hasAtLeast8Letters,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
                         _PasswordRule(
@@ -417,7 +417,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Confirm password',
                     width: formW,
                     showError: c.submitted && !c.isConfirmPasswordValid,
-                    hintText: 'e.g. pass@123',
+                    hintText: 'e.g. Password@1',
                     focusNode: _confirmFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
