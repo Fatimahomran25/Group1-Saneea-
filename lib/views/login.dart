@@ -25,6 +25,8 @@ class _loginState extends State<login> {
   static const double _smallBoxH = 46;
   static const double _radiusField = 5;
   static const double _radiusButton = 10;
+  String? topMessage; // النص اللي يطلع فوق
+  bool showTopMessage = false; // هل نعرضه أو لا
 
   @override
   void initState() {
@@ -100,7 +102,18 @@ class _loginState extends State<login> {
                   ),
 
                   const SizedBox(height: 22),
-
+                  if (showTopMessage && topMessage != null) ...[
+                    Text(
+                      topMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   // ===== National ID / Iqama =====
                   SizedBox(
                     width: formW,
@@ -108,12 +121,11 @@ class _loginState extends State<login> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                    
-                              'National ID / Iqama',
-                         style: TextStyle(
-                         fontSize: 16,
-                         fontWeight: FontWeight.w400,
-                        color: Colors.black,
+                          'National ID / Iqama',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -125,7 +137,7 @@ class _loginState extends State<login> {
                             focusNode: _nidFocus,
                             onChanged: (_) => setState(() {}),
                             keyboardType: TextInputType.number,
-                            inputFormatters:  [
+                            inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(10),
                             ],
@@ -137,9 +149,21 @@ class _loginState extends State<login> {
                                 vertical: 12,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(_radiusField),
+                                borderRadius: BorderRadius.circular(
+                                  _radiusField,
+                                ),
                                 borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _radiusField,
+                                ),
+                                borderSide: BorderSide(
+                                  color: c.nationalIdFieldError != null
+                                      ? Colors.red
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
@@ -149,8 +173,6 @@ class _loginState extends State<login> {
                             c.nationalIdCtrl.text.isNotEmpty ||
                             c.submitted) ...[
                           const SizedBox(height: 8),
-
-                    
                         ],
                       ],
                     ),
@@ -189,32 +211,58 @@ class _loginState extends State<login> {
                                 vertical: 12,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(_radiusField),
+                                borderRadius: BorderRadius.circular(
+                                  _radiusField,
+                                ),
                                 borderSide: BorderSide.none,
                               ),
-                              
+
                               suffixIcon: IconButton(
-    onPressed: () => setState(() => c.togglePasswordVisibility()),
-    icon: Icon(
-      c.obscurePassword ? Icons.visibility_off : Icons.visibility,
-      color: _primaryPurple,
-    ),
+                                onPressed: () => setState(
+                                  () => c.togglePasswordVisibility(),
+                                ),
+                                icon: Icon(
+                                  c.obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: _primaryPurple,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _radiusField,
+                                ),
+                                borderSide: BorderSide(
+                                  color: c.passwordFieldError != null
+                                      ? Colors.red
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _radiusField,
+                                ),
+                                borderSide: BorderSide(
+                                  color: c.passwordFieldError != null
+                                      ? Colors.red
+                                      : _primaryPurple,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
 
-            
                         const SizedBox(height: 8),
 
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: GestureDetector(     onTap: () {
-                          Navigator.pushNamed(context, '/signup');
-                        
-},
-  
-                            
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, '/forgotPassword');
+                            },
+
                             child: const Text(
                               'Forgot password?',
                               style: TextStyle(
@@ -232,135 +280,140 @@ class _loginState extends State<login> {
                           width: formW,
                           height: 46,
                           child: ElevatedButton(
-                           onPressed: c.isLoading ? null : () async {
-        FocusScope.of(context).unfocus(); // يقفل الكيبورد
+                            onPressed: c.isLoading
+                                ? null
+                                : () async {
+                                    FocusScope.of(context).unfocus();
 
-        setState(() => c.submit());
-final nid = c.nationalIdCtrl.text.trim();
+                                    setState(() {
+                                      c.submit();
 
-setState(() {
-  c.nationalIdError = null;
-  c.passwordError = null;
-});
+                                      if (c.nationalIdFieldError != null ||
+                                          c.passwordFieldError != null) {
+                                        showTopMessage = true;
+                                        topMessage =
+                                            'Please complete all required fields.';
+                                      } else {
+                                        showTopMessage = false;
+                                        topMessage = null;
+                                      }
+                                    });
 
-        if (nid.length != 10) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Enter a 10-digit National ID / Iqama.')),
-          );
-          return;
-        }
-         if (nid.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Enter your National ID / Iqama.')),
-          );
-          return;
-        }
+                                    // إذا فيه أخطاء بالحقول لا نكمل
+                                    if (c.nationalIdFieldError != null ||
+                                        c.passwordFieldError != null)
+                                      return;
 
-        if (c.passwordCtrl.text.trim().isEmpty) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Enter your password.')),
-  );
-  return;
-}
+                                    final success = await c.login();
 
-        final success = await c.login();
-        setState(() {});
+                                    if (!success) {
+                                      setState(() {
+                                        showTopMessage = true;
+                                        topMessage =
+                                            c.serverError ?? 'Login failed.';
+                                      });
+                                      return;
+                                    }
 
-if (success) {
- final nid = c.nationalIdCtrl.text.trim();
-  final isAdmin = nid == '9999999999';
+                                    setState(() {
+                                      showTopMessage = false;
+                                      topMessage = null;
+                                    });
 
-  if (isAdmin) {
-    Navigator.pushReplacementNamed(context, '/adminHome');
-    return;
-  }
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    final doc = await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(user!.uid)
+                                        .get();
 
-  final user = FirebaseAuth.instance.currentUser;
+                                    final accountType =
+                                        (doc.data()?['accountType'] ?? '')
+                                            .toString()
+                                            .toLowerCase()
+                                            .trim();
 
-  final doc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(user!.uid)
-      .get();
-
-  final accountType = doc.data()?['accountType'].toString();
-
-  if (accountType == 'freelancer') {
-    Navigator.pushReplacementNamed(context, '/freelancerHome');
-  } else {
-    Navigator.pushReplacementNamed(context, '/clientHome');
-  }
-
-} else {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(c.serverError ?? 'Login failed')),
-  );
-}
-      },
+                                    if (accountType == 'admin') {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        '/adminHome',
+                                      );
+                                    } else if (accountType == 'freelancer') {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        '/freelancerHome',
+                                      );
+                                    } else {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        '/clientHome',
+                                      );
+                                    }
+                                  },
 
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _primaryPurple,
-                              disabledBackgroundColor:
-                                  _primaryPurple.withOpacity(0.4),
+                              disabledBackgroundColor: _primaryPurple
+                                  .withOpacity(0.4),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(_radiusButton),
+                                borderRadius: BorderRadius.circular(
+                                  _radiusButton,
+                                ),
                               ),
                               elevation: 6,
                             ),
                             child: c.isLoading
-    ? const SizedBox(
-        width: 22,
-        height: 22,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Colors.white,
-        ),
-      )
-    : const Text(
-        'Log in',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w400,
-          color: Colors.white,
-        ),
-      ),
-
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Log in',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w400,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 12),
-Align(
-  alignment: Alignment.centerLeft,
-  child: Row(
-    children: [
-      const Text(
-        "Doesn’t have an account? ",
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.black,
-        ),
-      ),
-      GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const SignupScreen(), 
-            ),
-          );
-        },
-        child: const Text(
-          "Sign up",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF467FFF),
-          ),
-        ),
-      ),
-    ],
-  ),
-),
-
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            children: [
+                              const Text(
+                                "Doesn’t have an account? ",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignupScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  "Sign up",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF467FFF),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -373,4 +426,3 @@ Align(
     );
   }
 }
-
