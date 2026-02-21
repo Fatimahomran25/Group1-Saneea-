@@ -4,7 +4,7 @@ import 'firebase_options.dart';
 import 'views/signup.dart';
 import 'views/login.dart';
 import 'views/freelancer_home.dart';
-import 'views/client_home.dart';
+import 'views/client_home_screen.dart';
 import 'views/admin_home.dart';
 import 'views/intro.dart';
 import 'views/password.dart';
