@@ -89,16 +89,25 @@ class SignupController {
   /// Password rule #2: contains at least one digit.
   bool get hasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
 
+  /// Password rule: contains at least one uppercase letter (A-Z).
+  bool get hasUppercase => RegExp(r'[A-Z]').hasMatch(passwordCtrl.text);
+
+  /// Password rule: contains at least one lowercase letter (a-z).
+  bool get hasLowercase => RegExp(r'[a-z]').hasMatch(passwordCtrl.text);
+
+  /// Password rule #0: contains at least 8 letters (A-Z / a-z).
+  /// Password rule: at least 8 letters AND includes uppercase + lowercase.
   /// Password rule #0: contains at least 8 letters (A-Z / a-z).
   bool get hasAtLeast8Letters =>
       RegExp(r'[A-Za-z]').allMatches(passwordCtrl.text).length >= 8;
 
-  /// Overall password validity (must satisfy all rules).
-  bool get isPasswordValid => hasAtLeast8Letters && hasNumber && hasSpecialChar;
+  /// Overall password validity (3 rules فقط)
+  bool get isPasswordValid =>
+      hasAtLeast8Letters && hasUppercase && hasLowercase;
 
-  /// Same logic as isPasswordValid but named "Strong" for UI display purposes.
+  /// Same logic but named "Strong" for UI display purposes.
   bool get isPasswordStrong =>
-      hasAtLeast8Letters && hasNumber && hasSpecialChar;
+      hasAtLeast8Letters && hasUppercase && hasLowercase;
 
   /// Confirm password must be non-empty and match the original password.
   bool get isConfirmPasswordValid =>

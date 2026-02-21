@@ -337,7 +337,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Email address',
                     width: formW,
                     showError: c.submitted && !c.isEmailValid,
-                    hintText: 'e.g. example@gmail.com',
+                    hintText: 'e.g. name@gmail.com',
                     focusNode: _emailFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
@@ -385,17 +385,27 @@ class _SignupScreenState extends State<SignupScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _PasswordRule(
-                          text: "Contains at least 8 letters",
+                          text: "At least 8 characters",
                           isValid: c.hasAtLeast8Letters,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
                         _PasswordRule(
-                          text: "Contains a number",
+                          text: "At least one uppercase character",
+                          isValid: c.hasUppercase,
+                          isActive: c.passwordCtrl.text.isNotEmpty,
+                        ),
+                        _PasswordRule(
+                          text: "At least one lowercase character",
+                          isValid: c.hasLowercase,
+                          isActive: c.passwordCtrl.text.isNotEmpty,
+                        ),
+                        _PasswordRule(
+                          text: "At least one numeric character",
                           isValid: c.hasNumber,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
                         _PasswordRule(
-                          text: "Contains a special character",
+                          text: "At least one special character",
                           isValid: c.hasSpecialChar,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
