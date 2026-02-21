@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "315464062158",
+    "project_id": "freelance-app-be58f",
+    "storage_bucket": "freelance-app-be58f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:315464062158:android:3aa391ba61f72fe2126c9f",
+        "android_client_info": {
+          "package_name": "com.example.saneea_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCv0K6vp6UcQV3c46wR-shReAG2lY161YI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
