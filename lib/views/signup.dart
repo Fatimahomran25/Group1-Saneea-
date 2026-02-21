@@ -86,12 +86,6 @@ class _SignupScreenState extends State<SignupScreen> {
   /// Default fill color for input fields (semi-transparent).
   static const _fieldFill = Color(0x5CE8DEF8);
 
-  /// Link color used for "Log in".
-  static const _btnBlue = Color(0xFF467FFF);
-
-  /// Primary text color used across labels and normal text.
-  static const _textBlack = Color(0xFF000000);
-
   /// Main brand color used for the primary button.
   static const _primaryPurple = Color(0xFF4F378B);
 
@@ -367,7 +361,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Password',
                     width: formW,
                     showError: c.submitted && !c.isPasswordValid,
-                    hintText: 'e.g. Password@1',
                     focusNode: _passFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
@@ -418,7 +411,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Confirm password',
                     width: formW,
                     showError: c.submitted && !c.isConfirmPasswordValid,
-                    hintText: 'e.g. Password@1',
                     focusNode: _confirmFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
