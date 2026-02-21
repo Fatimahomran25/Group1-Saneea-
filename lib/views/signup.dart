@@ -378,6 +378,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePass ? Icons.visibility_off : Icons.visibility,
+                        color: _primaryPurple,
                       ),
                       onPressed: () =>
                           setState(() => _obscurePass = !_obscurePass),
@@ -430,6 +431,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         _obscureConfirm
                             ? Icons.visibility_off
                             : Icons.visibility,
+                        color: _primaryPurple,
                       ),
                       onPressed: () =>
                           setState(() => _obscureConfirm = !_obscureConfirm),
@@ -459,7 +461,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   // Calls submit() to show validation, then createAccount() to register via Firebase.
                   SizedBox(
                     width: formW,
-                    height: 52,
+                    height: 46,
                     child: ElevatedButton(
                       onPressed: () async {
                         // Marks the form as submitted (used by validation UI).
@@ -490,56 +492,48 @@ class _SignupScreenState extends State<SignupScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(_radiusButton),
                         ),
-                        elevation: 4,
-                        // Subtle shadow for depth.
-                        shadowColor: Colors.black.withValues(alpha: 0.25),
+                        elevation: 6,
                       ),
                       child: const Text(
                         'Create Account',
                         style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w400,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
                   // ===== LOGIN LINK =====
                   // RichText + GestureDetector to make only "Log in" clickable.
                   SizedBox(
                     width: formW,
-                    child: Center(
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: _textBlack,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          const Text(
+                            "Have an account already? ",
+                            style: TextStyle(fontSize: 14, color: Colors.black),
                           ),
-                          children: [
-                            const TextSpan(text: 'Have an account already? '),
-                            WidgetSpan(
-                              child: GestureDetector(
-                                onTap: () => c.loginTap(context),
-                                child: const Text(
-                                  'Log in',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    color: _btnBlue,
-                                  ),
-                                ),
+                          GestureDetector(
+                            onTap: () => c.loginTap(context),
+                            child: const Text(
+                              "Log in",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF467FFF),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
                 ],
               ),
