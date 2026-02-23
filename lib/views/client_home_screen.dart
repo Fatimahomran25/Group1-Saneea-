@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'anouncment_view.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'client_profile.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -12,16 +11,6 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   static const primary = Color(0xFF5A3E9E);
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _myAnnouncementsStream() {
-    final user = FirebaseAuth.instance.currentUser!;
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('announcements')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -142,15 +131,25 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                         
-                   GestureDetector(
-                   onTap: () => Navigator.pushNamed(context, '/clientProfile'),
-                  child: CircleAvatar(
-                  radius: 20,
-                    backgroundColor: primary.withOpacity(0.12),
-                 child: const Icon(Icons.person_outline, color: primary, size: 22),
-                     ),
-                    ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ClientProfile(),
+                                ),
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: primary.withOpacity(0.12),
+                              child: const Icon(
+                                Icons.person_outline,
+                                color: primary,
+                                size: 22,
+                              ),
+                            ),
+                          ),
                           IconButton(
                             onPressed: () {},
                             icon: const Icon(
@@ -246,7 +245,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       const SizedBox(height: 18),
 
                       // Announcements list (local, from publish)
-                      ...[
+                      if (_announcements.isNotEmpty) ...[
                         Text(
                           "Announcements",
                           style: TextStyle(
@@ -256,97 +255,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
-                        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                          stream: _myAnnouncementsStream(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-
-                            if (snapshot.hasError) {
-                              return Text('Error: ${snapshot.error}');
-                            }
-
-                            final docs = snapshot.data?.docs ?? [];
-                            if (docs.isEmpty) {
-                              return const Text('No announcements yet.');
-                            }
-
-                            return Column(
-                              children: docs.map((doc) {
-                                final text = (doc.data()['text'] ?? '')
-                                    .toString();
-
-                                return Card(
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    side: BorderSide(
-                                      color: Colors.grey.shade200,
-                                    ),
-                                  ),
-                                  child: ListTile(
-                                    title: Text(
-                                      text,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () async {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text(
-                                              'Delete announcement?',
-                                            ),
-                                            content: const Text(
-                                              'This action cannot be undone.',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-
-                                        if (ok != true) return;
-
-                                        await doc.reference.delete();
-
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Deleted ✅'),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            );
-                          },
+                        ..._announcements.map(
+                          (a) => Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(color: Colors.grey.shade200),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Text(
+                                a,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
 
