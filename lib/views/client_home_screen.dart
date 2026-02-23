@@ -142,15 +142,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: primary.withOpacity(0.12),
-                            child: const Icon(
-                              Icons.person_outline,
-                              color: primary,
-                              size: 22,
-                            ),
-                          ),
+                         
+                   GestureDetector(
+                   onTap: () => Navigator.pushNamed(context, '/clientProfile'),
+                  child: CircleAvatar(
+                  radius: 20,
+                    backgroundColor: primary.withOpacity(0.12),
+                 child: const Icon(Icons.person_outline, color: primary, size: 22),
+                     ),
+                    ),
                           IconButton(
                             onPressed: () {},
                             icon: const Icon(

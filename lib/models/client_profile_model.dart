@@ -1,12 +1,18 @@
+
 class ClientProfileModel {
   final String uid;
-  final String nationalId; // read-only
-  final String name;       // editable
-  final String email;      // editable (gmail)
-  final String bio;        // editable (<=150)
-  final String? photoUrl;  // editable (from Storage)
-  final double rating;     // read-only (computed from reviews)
-  final String roleLabel;  // "Client"
+
+  // read-only
+  final String nationalId;
+
+  // editable
+  final String name;
+  final String email;
+  final String bio; // <= 150
+  final String? photoUrl;
+
+  // computed read-only
+  final double rating;
 
   const ClientProfileModel({
     required this.uid,
@@ -16,7 +22,6 @@ class ClientProfileModel {
     required this.bio,
     required this.photoUrl,
     required this.rating,
-    this.roleLabel = "Client",
   });
 
   ClientProfileModel copyWith({
@@ -26,7 +31,6 @@ class ClientProfileModel {
     String? bio,
     String? photoUrl,
     double? rating,
-    String? roleLabel,
   }) {
     return ClientProfileModel(
       uid: uid,
@@ -36,32 +40,28 @@ class ClientProfileModel {
       bio: bio ?? this.bio,
       photoUrl: photoUrl ?? this.photoUrl,
       rating: rating ?? this.rating,
-      roleLabel: roleLabel ?? this.roleLabel,
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
+      'accountType': 'client',
       'nationalId': nationalId,
       'name': name,
       'email': email,
       'bio': bio,
       'photoUrl': photoUrl,
-      'accountType': 'client',
     };
   }
 
   static ClientProfileModel fromFirestore({
     required String uid,
     required Map<String, dynamic> data,
-    double rating = 0,
+    required double rating,
   }) {
     final firstName = (data['firstName'] ?? '').toString().trim();
     final lastName = (data['lastName'] ?? '').toString().trim();
-
-    // إذا مشروعك يستخدم first/lastName نخليه يتجمّع تلقائيًا
-    final composedName =
-        (data['name'] ?? '$firstName $lastName').toString().trim();
+    final composedName = (data['name'] ?? '$firstName $lastName').toString().trim();
 
     return ClientProfileModel(
       uid: uid,
@@ -71,7 +71,6 @@ class ClientProfileModel {
       bio: (data['bio'] ?? '').toString(),
       photoUrl: data['photoUrl']?.toString(),
       rating: rating,
-      roleLabel: "Client",
     );
   }
 }
@@ -88,9 +87,12 @@ class ClientReviewModel {
   });
 
   static ClientReviewModel fromFirestore(Map<String, dynamic> data) {
+    final r = data['rating'];
+    final ratingInt = (r is int) ? r : (r is num ? r.toInt() : 0);
+
     return ClientReviewModel(
       reviewerName: (data['reviewerName'] ?? 'User').toString(),
-      rating: (data['rating'] ?? 0) as int,
+      rating: ratingInt.clamp(0, 5),
       text: (data['text'] ?? '').toString(),
     );
   }

@@ -1,45 +1,13 @@
-// client_profile.dart
-import 'dart:io';
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
-class ClientProfilePage extends StatefulWidget {
-  const ClientProfilePage({super.key});
+import '../controlles/client_profile_controller.dart';
 
-  @override
-  State<ClientProfilePage> createState() => _ClientProfilePageState();
-}
-
-class _ClientProfilePageState extends State<ClientProfilePage> {
-  // -------- form / state --------
-  final _formKey = GlobalKey<FormState>();
-  bool _isEditing = false;
-
-  // -------- controllers --------
-  final TextEditingController _nameCtrl =
-      TextEditingController(text: "Manar Alrazin");
-  final TextEditingController _bioCtrl = TextEditingController(
-      text: "bio bio bio bio bio bio\nbio bio bio bio bio bio");
-  final TextEditingController _emailCtrl =
-      TextEditingController(text: "ma.alrazin@gmail.com");
-
-  // read-only
-  final String _nationalId = "1110000000";
-
-  // counter
-  int _bioLen = 0;
-
-  // image
-  File? _pickedImage;
-
-  // rating / reviews
-  final double _rating = 4.0;
-  final List<_Review> _reviews = const [
-    _Review(name: "Lina Alharbi", rating: 4, text: "Very good work and fast delivery."),
-    _Review(name: "Lina Alharbi", rating: 4, text: "Excellent communication and quality."),
-    _Review(name: "Lina Alharbi", rating: 4, text: "On time and professional."),
-  ];
+class ClientProfile extends StatelessWidget {
+  const ClientProfile({super.key});
 
   // colors close to figma
   static const Color kPurple = Color(0xFF3A1B63);
@@ -47,259 +15,256 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
   static const Color kBorder = Color(0x663A1B63);
 
   @override
-  void initState() {
-    super.initState();
-    _bioLen = _bioCtrl.text.length;
-
-    _bioCtrl.addListener(() {
-      setState(() {
-        _bioLen = _bioCtrl.text.length;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _bioCtrl.dispose();
-    _emailCtrl.dispose();
-    super.dispose();
-  }
-
-  // -------- actions --------
-  Future<void> _pickProfileImage() async {
-    if (!_isEditing) return;
-
-    final picker = ImagePicker();
-    final XFile? x = await picker.pickImage(source: ImageSource.gallery);
-    if (x == null) return;
-
-    setState(() => _pickedImage = File(x.path));
-  }
-
-  void _startEdit() {
-    setState(() => _isEditing = true);
-  }
-
-  void _cancelEdit() {
-    setState(() => _isEditing = false);
-    // لو تبين يرجع القيم القديمة بدل ما يبقى التعديل (قولي لي وأضيف snapshot)
-    _formKey.currentState?.reset();
-  }
-
-  void _save() {
-    final ok = _formKey.currentState?.validate() ?? false;
-    if (!ok) return;
-
-    // هنا تحطين حفظ للـ Firebase/Backend
-    // مثال: await updateProfile(name, bio, email, image);
-
-    setState(() => _isEditing = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Saved successfully")),
-    );
-  }
-
-  // -------- validators --------
-  String? _nameValidator(String? v) {
-    final value = (v ?? "").trim();
-    if (value.isEmpty) return "Name is required";
-    if (value.length < 2) return "Name is too short";
-    return null;
-  }
-
-  String? _bioValidator(String? v) {
-    final value = (v ?? "");
-    if (value.length > 150) return "Bio must be 150 characters or less";
-    return null;
-  }
-
-  String? _gmailValidator(String? v) {
-    final value = (v ?? "").trim();
-
-    if (value.isEmpty) return "Email is required";
-
-    // Gmail فقط + لازم ينتهي @gmail.com
-    final reg = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
-    if (!reg.hasMatch(value)) {
-      return "Enter a valid email (example: name@gmail.com)";
-    }
-    return null;
-  }
-
-  // -------- UI --------
-  @override
   Widget build(BuildContext context) {
-    // يقلل إحساس "مكبرة" (خصوصًا لو جهازك Text size كبير)
     final mq = MediaQuery.of(context);
     final fixedMq = mq.copyWith(textScaler: const TextScaler.linear(1.0));
 
     return MediaQuery(
       data: fixedMq,
-      child: Scaffold(
+      child: ChangeNotifierProvider(
+        create: (_) => ClientProfileController()..init(),
+        child: const _ClientProfileBody(),
+      ),
+    );
+  }
+}
+
+class _ClientProfileBody extends StatefulWidget {
+  const _ClientProfileBody();
+
+  @override
+  State<_ClientProfileBody> createState() => _ClientProfileBodyState();
+}
+
+class _ClientProfileBodyState extends State<_ClientProfileBody> {
+  final _formKey = GlobalKey<FormState>();
+
+  Future<void> _pickProfileImage(ClientProfileController c) async {
+    if (!c.isEditing) return;
+
+    final XFile? x = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (x == null) return;
+
+    c.setPickedImage(File(x.path));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<ClientProfileController>();
+
+    if (c.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (c.error != null) {
+      return Scaffold(body: Center(child: Text(c.error!)));
+    }
+
+    final p = c.profile!;
+    final purple = ClientProfile.kPurple;
+
+    ImageProvider? avatar;
+    if (c.pickedImageFile != null) {
+      avatar = FileImage(c.pickedImageFile!);
+    } else if (p.photoUrl != null && p.photoUrl!.isNotEmpty) {
+      avatar = NetworkImage(p.photoUrl!);
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
-          actions: [
-            if (!_isEditing)
-              TextButton.icon(
-                onPressed: _startEdit,
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text("Edit"),
-                style: TextButton.styleFrom(
-                  foregroundColor: kPurple,
-                ),
-              )
-            else ...[
-              TextButton(
-                onPressed: _cancelEdit,
-                child: const Text("Cancel"),
-              ),
-              const SizedBox(width: 6),
-              TextButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.check, size: 18),
-                label: const Text("Done"),
-                style: TextButton.styleFrom(
-                  foregroundColor: kPurple,
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ],
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              _Header(
-                purple: kPurple,
-                isEditing: _isEditing,
-                nameCtrl: _nameCtrl,
-                nameValidator: _nameValidator,
-                onPickImage: _pickProfileImage,
-                pickedImage: _pickedImage,
-              ),
+        actions: [
+          if (!c.isEditing)
+            TextButton.icon(
+              onPressed: c.startEdit,
+              icon: const Icon(Icons.edit, size: 18),
+              label: const Text("Edit"),
+              style: TextButton.styleFrom(foregroundColor: purple),
+            )
+          else ...[
+            TextButton(
+              onPressed: c.cancelEdit,
+              child: const Text("Cancel"),
+            ),
+            const SizedBox(width: 6),
+            TextButton.icon(
+              onPressed: c.isSaving
+                  ? null
+                  : () async {
+                      if (!(_formKey.currentState?.validate() ?? false)) return;
 
-              const SizedBox(height: 10),
+                      final ok = await c.save();
+                      if (!mounted) return;
 
-              // BIO Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _SectionCard(
-                  child: _EditableField(
-                    label: "Bio",
-                    enabled: _isEditing,
-                    controller: _bioCtrl,
-                    maxLength: 150,
-                    maxLines: 4,
-                    validator: _bioValidator,
-                    counterText: "${_bioLen.clamp(0, 150)}/150",
-                    hintText: "Write your bio...",
-                    purple: kPurple,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Info card: National ID + Email + Rating
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _SectionCard(
-                  background: kSoftBg,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ReadOnlyBlock(
-                        title: "National ID / Iqama",
-                        value: _nationalId,
-                        purple: kPurple,
-                      ),
-                      const SizedBox(height: 10),
-
-                      _EditableField(
-                        label: "Email Address",
-                        enabled: _isEditing,
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: _gmailValidator,
-                        hintText: "name@gmail.com",
-                        purple: kPurple,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Text(
-                        "Rating",
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _StarsReadOnly(value: _rating, size: 22),
-                          const SizedBox(width: 8),
-                          Text(
-                            _rating.toStringAsFixed(1),
-                            style: TextStyle(color: Colors.grey.shade700),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ok ? "Saved successfully ✅" : (c.error ?? "Save failed"),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text("Save"),
+              style: TextButton.styleFrom(foregroundColor: purple),
+            ),
+            const SizedBox(width: 8),
+          ],
 
-              const SizedBox(height: 14),
-
-              // Reviews
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Reviews",
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: _reviews
-                      .map((r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _ReviewCard(
-                              purple: kPurple,
-                              review: r,
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Account actions (Figma-like)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _AccountActionsCard(purple: kPurple),
-              ),
-            ],
+          // ✅ Logout فوق فقط
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black),
+            onPressed: () => c.logout(context),
           ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            _Header(
+              purple: purple,
+              isEditing: c.isEditing,
+              nameCtrl: c.nameCtrl,
+              nameValidator: c.validateName,
+              onPickImage: () => _pickProfileImage(c),
+              avatar: avatar,
+            ),
+
+            const SizedBox(height: 10),
+
+            // BIO Card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _SectionCard(
+                child: _EditableField(
+                  label: "Bio",
+                  enabled: c.isEditing,
+                  controller: c.bioCtrl,
+                  maxLength: ClientProfileController.bioMax,
+                  maxLines: 4,
+                  validator: c.validateBio,
+                  counterText: "${c.bioLen.clamp(0, 150)}/150",
+                  hintText: "Write your bio...",
+                  purple: purple,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Info card: National ID + Email + Rating
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _SectionCard(
+                background: ClientProfile.kSoftBg,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ReadOnlyBlock(
+                      title: "National ID / Iqama",
+                      value: p.nationalId,
+                      purple: purple,
+                    ),
+                    const SizedBox(height: 10),
+
+                    _EditableField(
+                      label: "Email Address",
+                      enabled: c.isEditing,
+                      controller: c.emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: c.validateGmail,
+                      hintText: "name@gmail.com",
+                      purple: purple,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      "Rating",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _StarsReadOnly(value: p.rating, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          p.rating.toStringAsFixed(1),
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Reviews title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                "Reviews",
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ✅ Reviews outer box + inner boxes (figma-like)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ReviewsOuterCard(
+                child: c.reviews.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text("No reviews yet."),
+                      )
+                    : Column(
+                        children: c.reviews
+                            .map(
+                              (r) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _ReviewFigmaTile(
+                                  name: r.reviewerName,
+                                  rating: r.rating,
+                                  text: r.text,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ✅ تحت: Reset + Delete فقط
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _AccountActionsCard(
+                onResetPassword: () => Navigator.pushNamed(context, '/forgotPassword'),
+                onDelete: () => c.deleteAccount(context),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -315,7 +280,7 @@ class _Header extends StatelessWidget {
     required this.nameCtrl,
     required this.nameValidator,
     required this.onPickImage,
-    required this.pickedImage,
+    required this.avatar,
   });
 
   final Color purple;
@@ -323,7 +288,7 @@ class _Header extends StatelessWidget {
   final TextEditingController nameCtrl;
   final String? Function(String?) nameValidator;
   final VoidCallback onPickImage;
-  final File? pickedImage;
+  final ImageProvider? avatar;
 
   @override
   Widget build(BuildContext context) {
@@ -385,9 +350,8 @@ class _Header extends StatelessWidget {
                               child: CircleAvatar(
                                 radius: 41,
                                 backgroundColor: const Color(0xFFF2EAFB),
-                                backgroundImage:
-                                    pickedImage != null ? FileImage(pickedImage!) : null,
-                                child: pickedImage == null
+                                backgroundImage: avatar,
+                                child: avatar == null
                                     ? Icon(Icons.person, color: purple, size: 34)
                                     : null,
                               ),
@@ -425,14 +389,14 @@ class _Header extends StatelessWidget {
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
                           ),
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
                             disabledBorder: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             errorBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                            contentPadding: EdgeInsets.symmetric(vertical: 2),
                           ),
                         ),
                       ),
@@ -470,7 +434,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: background ?? Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _ClientProfilePageState.kBorder, width: 1.2),
+        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -543,8 +507,7 @@ class _EditableField extends StatelessWidget {
             filled: true,
             fillColor: Colors.white.withOpacity(0.75),
             isDense: true,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(
@@ -604,14 +567,9 @@ class _ReadOnlyBlock extends StatelessWidget {
   }
 }
 
-class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({
-    required this.purple,
-    required this.review,
-  });
-
-  final Color purple;
-  final _Review review;
+class _ReviewsOuterCard extends StatelessWidget {
+  const _ReviewsOuterCard({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -619,16 +577,49 @@ class _ReviewCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: purple.withOpacity(0.6), width: 1.1),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ReviewFigmaTile extends StatelessWidget {
+  const _ReviewFigmaTile({
+    required this.name,
+    required this.rating,
+    required this.text,
+  });
+
+  final String name;
+  final int rating;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F3FB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: ClientProfile.kBorder.withOpacity(0.7),
+          width: 1.1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFFF2EAFB),
-            child: Icon(Icons.person, color: purple, size: 20),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: ClientProfile.kBorder.withOpacity(0.6)),
+            ),
+            child: const Icon(Icons.person_outline, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -639,20 +630,17 @@ class _ReviewCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        review.name,
-                        style: TextStyle(
-                          color: purple,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    _StarsReadOnly(value: review.rating.toDouble(), size: 16),
+                    _StarsReadOnly(value: rating.toDouble(), size: 16),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  review.text,
-                  style: TextStyle(color: Colors.grey.shade700),
+                  text,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
                 ),
               ],
             ),
@@ -664,9 +652,13 @@ class _ReviewCard extends StatelessWidget {
 }
 
 class _AccountActionsCard extends StatelessWidget {
-  const _AccountActionsCard({required this.purple});
+  const _AccountActionsCard({
+    required this.onResetPassword,
+    required this.onDelete,
+  });
 
-  final Color purple;
+  final VoidCallback onResetPassword;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -675,39 +667,21 @@ class _AccountActionsCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
         decoration: BoxDecoration(
-          color: _ClientProfilePageState.kSoftBg,
-          border: Border.all(color: _ClientProfilePageState.kBorder, width: 1.2),
+          color: ClientProfile.kSoftBg,
+          border: Border.all(color: ClientProfile.kBorder, width: 1.2),
         ),
         child: Column(
           children: [
             _ActionBtn(
               text: "Reset password",
               color: Colors.blue,
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Reset password clicked")),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            _ActionBtn(
-              text: "Log out",
-              color: Colors.red,
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Logout clicked")),
-                );
-              },
+              onPressed: onResetPassword,
             ),
             const SizedBox(height: 12),
             _ActionBtn(
               text: "Delete account",
               color: Colors.red,
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Delete account clicked")),
-                );
-              },
+              onPressed: onDelete,
             ),
           ],
         ),
@@ -736,9 +710,7 @@ class _ActionBtn extends StatelessWidget {
         side: BorderSide(color: Colors.grey.shade300),
         padding: const EdgeInsets.symmetric(vertical: 14),
         minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         backgroundColor: Colors.white.withOpacity(0.6),
       ),
       child: Text(
@@ -776,17 +748,4 @@ class _StarsReadOnly extends StatelessWidget {
       }),
     );
   }
-}
-
-// simple model
-class _Review {
-  final String name;
-  final int rating;
-  final String text;
-
-  const _Review({
-    required this.name,
-    required this.rating,
-    required this.text,
-  });
 }
