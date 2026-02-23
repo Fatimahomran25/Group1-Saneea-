@@ -137,6 +137,18 @@ class ClientProfileController extends ChangeNotifier {
     return null;
   }
 
+String? validateIbanNullable(String? v) {
+  final s = (v ?? '').trim();
+  if (s.isEmpty) return null; // optional
+
+  // يشيل المسافات
+  final clean = s.replaceAll(' ', '');
+
+  // ✅ Saudi IBAN: يبدأ SA وبعدها 22 رقم (المجموع 24)
+  final reg = RegExp(r'^SA\d{22}$');
+  if (!reg.hasMatch(clean)) return 'IBAN غير صحيح. مثال: SA00 0000 0000 0000 0000 0000';
+  return null;
+}
   // image
   void setPickedImage(File file) {
     if (!isEditing) return;

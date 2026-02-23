@@ -9,6 +9,8 @@ import 'views/admin_home.dart';
 import 'views/intro.dart';
 import 'views/password.dart';
 import 'views/client_profile.dart';
+import 'views/bank_account.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -52,6 +54,7 @@ class MyApp extends StatelessWidget {
         '/adminHome': (context) => const AdminHomeScreen(),
         '/forgotPassword': (context) => const ForgotPasswordPlaceholder(),
         '/clientProfile': (_) => ClientProfile(),
+        '/bankAccount': (_) => const BankAccountView(),
       },
     );
   }

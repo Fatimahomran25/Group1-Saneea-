@@ -33,7 +33,7 @@ class BankAccountModel {
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
-
+  Map<String, dynamic> toMap() => toFirestore(); 
   static BankAccountModel fromFirestore({
     required String id,
     required Map<String, dynamic> data,

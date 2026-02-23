@@ -1,11 +1,9 @@
 
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:saneea_app/controlles/%20%20freelancer_profile_controller.dart';
 
-import '../controlles/  freelancer_profile_controller.dart';
+import '../controlles/freelancer_profile_controller.dart';
 import '../models/freelancer_profile_model.dart';
 
 class FreelancerProfileView extends StatefulWidget {
