@@ -656,6 +656,7 @@ class _Header extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: purple, fontSize: 28, fontWeight: FontWeight.w800),
                               decoration: const InputDecoration(
+                                hintText: 'Enter your job title (e.g., Graphic Designer)', 
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,

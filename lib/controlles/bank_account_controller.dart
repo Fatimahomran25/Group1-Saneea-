@@ -22,7 +22,7 @@ class BankAccountController extends ChangeNotifier {
     final s = (v ?? '').trim().replaceAll(' ', '');
     if (s.isEmpty) return 'IBAN is required';
     if (!s.toUpperCase().startsWith('SA')) return 'IBAN must start with SA';
-    if (s.length < 15) return 'IBAN is too short';
+    if (s.length != 24) return 'IBAN must be exactly 24 characters';
     return null;
   }
 

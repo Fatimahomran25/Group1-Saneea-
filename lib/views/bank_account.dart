@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controlles/bank_account_controller.dart';
 import '../models/bank_account_model.dart';
+import 'package:flutter/services.dart';
 
 class BankAccountView extends StatefulWidget {
   const BankAccountView({super.key});
@@ -42,6 +43,11 @@ class _BankAccountViewState extends State<BankAccountView> {
           child: TextFormField(
             controller: c.ibanCtrl,
             validator: c.validateIban,
+             maxLength: 24, 
+             inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9 ]')),
+             IbanFormatter(),
+             ],
             decoration: const InputDecoration(
               labelText: 'IBAN',
               hintText: 'SAxxxxxxxxxxxxxxxxxxxx',
@@ -278,9 +284,40 @@ class _IbanTile extends StatelessWidget {
             tooltip: 'Delete',
             onPressed: disabled ? null : onDelete,
             icon: const Icon(Icons.delete, color: Colors.red),
+
           ),
         ],
       ),
+    );
+  }
+}
+
+ 
+class IbanFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String text = newValue.text.replaceAll(' ', '').toUpperCase();
+
+    if (text.length > 24) {
+      text = text.substring(0, 24);
+    }
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if ((i + 1) % 4 == 0 && i + 1 != text.length) {
+        buffer.write(' ');
+      }
+    }
+
+    final formatted = buffer.toString();
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

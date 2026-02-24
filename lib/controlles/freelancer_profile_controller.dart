@@ -136,10 +136,18 @@ class FreelancerProfileController extends ChangeNotifier {
   }
 
   String? validateTitle(String? v) {
-    final value = (v ?? '').trim();
-    if (value.isEmpty) return "Job title is required";
-    return null;
+  final value = (v ?? '').trim();
+
+  if (value.isEmpty) {
+    return "Job title is required";
   }
+
+  if (value.length < 2) {
+    return "Job title is too short";
+  }
+
+  return null;
+}
 
   String? validateBio(String? v) {
     final value = (v ?? '');
@@ -236,6 +244,12 @@ class FreelancerProfileController extends ChangeNotifier {
 
       final newName = nameCtrl.text.trim();
       final newTitle = titleCtrl.text.trim();
+      if (newTitle.isEmpty) {
+      error = 'Please enter your job title';
+       notifyListeners();
+       isSaving = false;
+       return false;
+       }
       final newEmail = emailCtrl.text.trim();
 
       final newBioRaw = bioCtrl.text;
@@ -246,20 +260,20 @@ class FreelancerProfileController extends ChangeNotifier {
       // نخليه اختياري: لو فاضي نخزن null أو "" (أنا بخليه "")
       final ibanToSave = newIban.isEmpty ? "" : newIban;
 
-      // (رفع صورة لستوريج لاحقاً)
+      // (رفع صورة لستوريج لاحقا
       String? photoUrl = profile!.photoUrl;
 
-      await _db.collection('users').doc(user.uid).update({
-        'name': newName,
-        'title': newTitle,
-        'email': newEmail,
-        'bio': safeBio,
-        'serviceType': profile!.serviceType,
-        'workingMode': profile!.workingMode,
-        'experiences': profile!.experiences.map((e) => e.toMap()).toList(),
-        'iban': ibanToSave, // ✅
-        if (photoUrl != null) 'photoUrl': photoUrl,
-      });
+       await  _db.collection('users').doc(user.uid).set({
+      'name': newName,
+     'title': newTitle,
+     'email': newEmail,
+     'bio': safeBio,
+    'serviceType': profile!.serviceType,
+    'workingMode': profile!.workingMode,
+    'experiences': profile!.experiences.map((e) => e.toMap()).toList(),
+    'iban': ibanToSave,
+  if (photoUrl != null) 'photoUrl': photoUrl,
+}, SetOptions(merge: true));
 
       // تحديث Auth email (قد يتطلب إعادة تسجيل دخول)
       if (newEmail != user.email) {
