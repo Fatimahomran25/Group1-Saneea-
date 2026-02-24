@@ -243,7 +243,11 @@ class FreelancerProfileController extends ChangeNotifier {
       if (user == null) throw "Not logged in";
 
       final newName = nameCtrl.text.trim();
+      final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      final firstName = parts.isNotEmpty ? parts.first : '';
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       final newTitle = titleCtrl.text.trim();
+      print('DEBUG: firstName=$firstName lastName=$lastName');
       if (newTitle.isEmpty) {
       error = 'Please enter your job title';
        notifyListeners();
@@ -265,6 +269,8 @@ class FreelancerProfileController extends ChangeNotifier {
 
        await  _db.collection('users').doc(user.uid).set({
       'name': newName,
+      'firstName': firstName,      
+      'lastName': lastName,
      'title': newTitle,
      'email': newEmail,
      'bio': safeBio,

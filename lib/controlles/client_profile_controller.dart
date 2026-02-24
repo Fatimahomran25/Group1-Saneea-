@@ -176,6 +176,9 @@ String? validateIbanNullable(String? v) {
       if (user == null) throw "Not logged in";
 
       final newName = nameCtrl.text.trim();
+      final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      final firstName = parts.isNotEmpty ? parts.first : '';
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       final newEmail = emailCtrl.text.trim();
       final safeBio = bioCtrl.text.length > bioMax ? bioCtrl.text.substring(0, bioMax) : bioCtrl.text;
 
@@ -184,6 +187,8 @@ String? validateIbanNullable(String? v) {
       await _db.collection('users').doc(user.uid).set({
         'accountType': 'client',
         'name': newName,
+        'firstName': firstName,  
+        'lastName': lastName,
         'email': newEmail,
         'bio': safeBio,
         if (photoUrl != null) 'photoUrl': photoUrl,
