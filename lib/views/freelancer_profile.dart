@@ -334,7 +334,7 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                                       options: FreelancerProfileController.serviceTypeOptions,
                                       value: c.profile!.serviceType,
                                       enabled: c.isEditing,
-                                      onChanged: c.setServiceType,
+                                      onChanged: (v) => c.setServiceTypeAndPersist(v),
                                       purple: kPurple,
                                     ),
 
@@ -353,7 +353,7 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                                       options: FreelancerProfileController.workingModeOptions,
                                       value: c.profile!.workingMode,
                                       enabled: c.isEditing,
-                                      onChanged: c.setWorkingMode,
+                                      onChanged: (v) => c.setWorkingModeAndPersist(v),
                                       purple: kPurple,
                                     ),
 
@@ -1085,7 +1085,7 @@ class _SegmentBar extends StatelessWidget {
   });
 
   final List<String> options;
-  final String value;
+  final String? value;
   final bool enabled;
   final void Function(String v) onChanged;
   final Color purple;

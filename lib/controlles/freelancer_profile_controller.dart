@@ -40,17 +40,16 @@ class FreelancerProfileController extends ChangeNotifier {
 
   // options
   static const List<String> serviceTypeOptions = [
-    "one-time",
-    "part-time",
-    "full-time",
-  ];
+  "one-time",
+  "long-term",
+  "both",
+];
 
-  static const List<String> workingModeOptions = [
-    "in person",
-    "remote",
-    "hybrid",
-  ];
-
+static const List<String> workingModeOptions = [
+  "online",
+  "in-person",
+  "both",
+];
   int get bioLen => bioCtrl.text.length;
 
   Future<void> init() async {
@@ -205,6 +204,50 @@ class FreelancerProfileController extends ChangeNotifier {
     notifyListeners();
   }
 
+
+Future<void> setServiceTypeAndPersist(String v) async {
+  if (!isEditing || profile == null) return;
+
+  final old = profile!.serviceType;
+
+  profile = profile!.copyWith(serviceType: v);
+  notifyListeners();
+
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _db.collection('users').doc(user.uid).update({
+      'serviceType': v,
+    });
+  } catch (e) {
+    profile = profile!.copyWith(serviceType: old);
+    error = "Failed to save service type";
+    notifyListeners();
+  }
+}
+
+Future<void> setWorkingModeAndPersist(String v) async {
+  if (!isEditing || profile == null) return;
+
+  final old = profile!.workingMode;
+
+  profile = profile!.copyWith(workingMode: v);
+  notifyListeners();
+
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _db.collection('users').doc(user.uid).update({
+      'workingMode': v,
+    });
+  } catch (e) {
+    profile = profile!.copyWith(workingMode: old);
+    error = "Failed to save working mode";
+    notifyListeners();
+  }
+}
   void addExperience(ExperienceModel e) {
     if (!isEditing || profile == null) return;
     final list = [...profile!.experiences, e];

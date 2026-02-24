@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,11 +10,11 @@ import '../controlles/client_profile_controller.dart';
 class ClientProfile extends StatelessWidget {
   const ClientProfile({super.key});
 
-  // ✅ MATCH AdminProfile colors
-  static const Color kPurple = Color.fromRGBO(79, 55, 139, 1);
+  // ✅ نفس ألوان الفريلانسر/الأدمن
+  static const Color kPurple = Color(0xFF4F378B);
   static const Color kHeaderBg = Color(0xFFF2EAFB);
   static const Color kCardBg = Color(0xFFF4F1FA);
-  static const Color kSoftBorder = Color(0x66B8A9D9);
+  static const Color kBorder = Color(0x66B8A9D9);
 
   @override
   Widget build(BuildContext context) {
@@ -102,14 +103,20 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
     final c = context.watch<ClientProfileController>();
 
     if (c.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
     if (c.error != null) {
-      return Scaffold(body: Center(child: Text(c.error!)));
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text(c.error!)),
+      );
     }
 
     final p = c.profile!;
-    const purple = ClientProfile.kPurple;
+    final purple = ClientProfile.kPurple;
 
     ImageProvider? avatar;
     if (c.pickedImageFile != null) {
@@ -120,63 +127,22 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+
+      // ✅ AppBar: Back + Logout أحمر (مثل ما طلبتي)
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const BackButton(color: Colors.black),
         actions: [
-          if (!c.isEditing)
-            TextButton.icon(
-              onPressed: c.startEdit,
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text("Edit"),
-              style: TextButton.styleFrom(foregroundColor: purple),
-            )
-          else ...[
-            TextButton(
-              onPressed: c.cancelEdit,
-              child: const Text("Cancel"),
-            ),
-            const SizedBox(width: 6),
-            TextButton.icon(
-              onPressed: c.isSaving
-                  ? null
-                  : () async {
-                      if (!(_formKey.currentState?.validate() ?? false)) return;
-
-                      final ok = await c.save();
-                      if (!mounted) return;
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ok
-                                ? "Saved successfully ✅"
-                                : (c.error ?? "Save failed"),
-                          ),
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text("Save"),
-              style: TextButton.styleFrom(foregroundColor: purple),
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // ✅ Logout like Admin (red + bigger)
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              icon: const Icon(Icons.logout, color: Colors.red, size: 28),
-              onPressed: () => c.logout(context),
-            ),
+          IconButton(
+            tooltip: "Log out",
+            onPressed: () => c.logout(context),
+            icon: const Icon(Icons.logout, color: Colors.red),
           ),
+          const SizedBox(width: 6),
         ],
       ),
+
       body: Form(
         key: _formKey,
         child: ListView(
@@ -184,19 +150,21 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
           children: [
             const SizedBox(height: 10),
 
-            _HeaderLikeAdmin(
+            // ✅ Header مطابق للفريلانسر + زر Edit أيقونة داخل الهيدر
+            _HeaderLikeFreelancer(
               purple: purple,
               isEditing: c.isEditing,
               nameCtrl: c.nameCtrl,
               nameValidator: c.validateName,
+              roleText: "Client",
               onPickImage: () => _pickProfileImage(c),
               avatar: avatar,
-              roleText: "Client",
+              onEditTap: c.startEdit,
             ),
 
             const SizedBox(height: 14),
 
-            // ✅ ONE LONG CARD like Admin
+            // ✅ كارد طويل واحد
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -205,15 +173,12 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                 decoration: BoxDecoration(
                   color: ClientProfile.kCardBg,
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: ClientProfile.kSoftBorder,
-                    width: 1.2,
-                  ),
+                  border: Border.all(color: ClientProfile.kBorder, width: 1.2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // BIO (editable)
+                    // Bio
                     _EditableField(
                       label: "Bio",
                       enabled: c.isEditing,
@@ -221,23 +186,24 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                       maxLength: ClientProfileController.bioMax,
                       maxLines: 4,
                       validator: c.validateBio,
-                      counterText: "${c.bioLen.clamp(0, 150)}/150",
+                      counterText:
+                          "${c.bioLen.clamp(0, ClientProfileController.bioMax)}/${ClientProfileController.bioMax}",
                       hintText: "Write your bio...",
                       purple: purple,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                    // National ID (read-only)
+                    // National ID
                     _ReadOnlyBlock(
                       title: "National ID / Iqama",
                       value: p.nationalId,
                       purple: purple,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
-                    // Email (editable)
+                    // Email
                     _EditableField(
                       label: "Email Address",
                       enabled: c.isEditing,
@@ -248,32 +214,42 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                       purple: purple,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
-                    // Rating (read-only)
-                    Text(
-                      "Rating",
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    // Rating
+                    _InnerBox(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Rating",
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _StarsReadOnly(value: p.rating, size: 22),
+                              const SizedBox(width: 10),
+                              Text(
+                                p.rating.toStringAsFixed(1),
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _StarsReadOnly(value: p.rating, size: 22),
-                        const SizedBox(width: 8),
-                        Text(
-                          p.rating.toStringAsFixed(1),
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
-                    // Reviews (inside same long card)
+                    // Reviews title
                     Text(
                       "Reviews",
                       style: TextStyle(
@@ -281,53 +257,121 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
-                    _ReviewsBox(
+                    // Reviews box
+                    _InnerBox(
                       child: c.reviews.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Text("No reviews yet."),
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              child: Center(
+                                child: Text(
+                                  "No reviews yet.",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             )
-                          : ListView.builder(
-                              itemCount: c.reviews.length,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemBuilder: (context, i) {
-                                final r = c.reviews[i];
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: i == c.reviews.length - 1 ? 0 : 12,
-                                  ),
-                                  child: _ReviewTile(
-                                    name: r.reviewerName,
-                                    rating: r.rating,
-                                    text: r.text,
-                                  ),
-                                );
-                              },
+                          : Column(
+                              children: c.reviews
+                                  .map(
+                                    (r) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: _ReviewFigmaTile(
+                                        name: r.reviewerName,
+                                        rating: r.rating,
+                                        text: r.text,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // ✅ Buttons at bottom (Reset + Delete)
-                    _AdminStyleOutlinedBtn(
-                      text: "Reset password",
-                      textColor: const Color(0xFF2F7BFF),
-                      borderColor: purple.withOpacity(0.25),
-                      onPressed: () => Navigator.pushNamed(
-                        context,
-                        '/forgotPassword',
+                    // Buttons
+                    if (c.isEditing) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: c.isSaving ? null : c.cancelEdit,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text("Cancel"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: purple,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: c.isSaving
+                                  ? null
+                                  : () async {
+                                      final ok =
+                                          _formKey.currentState?.validate() ??
+                                              false;
+                                      if (!ok) return;
+
+                                      final saved = await c.save();
+                                      if (!mounted) return;
+
+                                      if (saved) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                              content:
+                                                  Text("Saved successfully ✅")),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                "Save failed: ${c.error ?? ''}"),
+                                          ),
+                                        );
+                                      }
+                                    },
+                              child: c.isSaving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Text("Done"),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _AdminStyleOutlinedBtn(
-                      text: "Delete account",
-                      textColor: Colors.red,
-                      borderColor: purple.withOpacity(0.25),
-                      onPressed: () => c.deleteAccount(context),
-                    ),
+                    ] else ...[
+                      _ActionBtn(
+                        text: "Reset password",
+                        color: const Color(0xFF2F7BFF),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/forgotPassword'),
+                      ),
+                      const SizedBox(height: 12),
+                      _ActionBtn(
+                        text: "Delete account",
+                        color: Colors.red,
+                        onPressed: () => c.deleteAccount(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -341,26 +385,28 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
   }
 }
 
-// ---------------- Widgets (UI only) ----------------
+// ---------------- Widgets ----------------
 
-class _HeaderLikeAdmin extends StatelessWidget {
-  const _HeaderLikeAdmin({
+class _HeaderLikeFreelancer extends StatelessWidget {
+  const _HeaderLikeFreelancer({
     required this.purple,
     required this.isEditing,
     required this.nameCtrl,
     required this.nameValidator,
+    required this.roleText,
     required this.onPickImage,
     required this.avatar,
-    required this.roleText,
+    required this.onEditTap,
   });
 
   final Color purple;
   final bool isEditing;
   final TextEditingController nameCtrl;
   final String? Function(String?) nameValidator;
+  final String roleText;
   final VoidCallback onPickImage;
   final ImageProvider? avatar;
-  final String roleText;
+  final VoidCallback onEditTap;
 
   @override
   Widget build(BuildContext context) {
@@ -371,109 +417,117 @@ class _HeaderLikeAdmin extends StatelessWidget {
         decoration: BoxDecoration(
           color: ClientProfile.kHeaderBg,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: purple.withOpacity(0.22),
-            width: 1.2,
-          ),
+          border: Border.all(color: purple.withOpacity(0.22), width: 1.2),
         ),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: CircleAvatar(
-                          radius: 44,
-                          backgroundColor: Colors.white,
-                          child: CircleAvatar(
-                            radius: 41,
-                            backgroundColor: ClientProfile.kHeaderBg,
-                            backgroundImage: avatar,
-                            child: avatar == null
-                                ? Icon(Icons.person, color: purple, size: 34)
-                                : null,
-                          ),
-                        ),
-                      ),
-                      if (isEditing)
-                        Positioned(
-                          right: 10,
-                          bottom: 8,
-                          child: GestureDetector(
-                            onTap: onPickImage,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: purple,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 18,
+        child: Stack(
+          children: [
+            // ✅ Edit icon فقط داخل الهيدر (مثل الفريلانسر)
+            if (!isEditing)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  tooltip: "Edit",
+                  onPressed: onEditTap,
+                  icon: Icon(Icons.edit, color: purple, size: 20),
+                ),
+              ),
+
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      height: 110,
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: CircleAvatar(
+                              radius: 44,
+                              backgroundColor: Colors.white,
+                              child: CircleAvatar(
+                                radius: 41,
+                                backgroundColor: ClientProfile.kHeaderBg,
+                                backgroundImage: avatar,
+                                child: avatar == null
+                                    ? Icon(Icons.person,
+                                        color: purple, size: 34)
+                                    : null,
                               ),
                             ),
                           ),
+                          if (isEditing)
+                            Positioned(
+                              right: 10,
+                              bottom: 8,
+                              child: GestureDetector(
+                                onTap: onPickImage,
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: purple,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 2),
+                                  ),
+                                  child: const Icon(Icons.add,
+                                      color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: 250,
+                      child: TextFormField(
+                        controller: nameCtrl,
+                        enabled: isEditing,
+                        validator: nameValidator,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: purple,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: 260,
-                  child: TextFormField(
-                    controller: nameCtrl,
-                    enabled: isEditing,
-                    validator: nameValidator,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: purple,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 2),
+                        ),
+                      ),
                     ),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 2),
+                    Text(
+                      roleText,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  roleText,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ReviewsBox extends StatelessWidget {
-  const _ReviewsBox({required this.child});
+class _InnerBox extends StatelessWidget {
+  const _InnerBox({required this.child});
   final Widget child;
 
   @override
@@ -483,120 +537,9 @@ class _ReviewsBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: ClientProfile.kSoftBorder,
-          width: 1.2,
-        ),
+        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
       ),
       child: child,
-    );
-  }
-}
-
-class _ReviewTile extends StatelessWidget {
-  const _ReviewTile({
-    required this.name,
-    required this.rating,
-    required this.text,
-  });
-
-  final String name;
-  final int rating;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F3FB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: ClientProfile.kSoftBorder.withOpacity(0.85),
-          width: 1.1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: ClientProfile.kSoftBorder.withOpacity(0.8),
-              ),
-            ),
-            child: const Icon(Icons.person_outline, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    _StarsReadOnly(value: rating.toDouble(), size: 16),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  text,
-                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AdminStyleOutlinedBtn extends StatelessWidget {
-  const _AdminStyleOutlinedBtn({
-    required this.text,
-    required this.textColor,
-    required this.borderColor,
-    required this.onPressed,
-  });
-
-  final String text;
-  final Color textColor;
-  final Color borderColor;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: BorderSide(color: borderColor, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -631,7 +574,7 @@ class _EditableField extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: purple.withOpacity(0.25), width: 1.2),
+      borderSide: BorderSide(color: purple.withOpacity(0.35), width: 1.2),
     );
 
     return Column(
@@ -658,7 +601,7 @@ class _EditableField extends StatelessWidget {
             hintText: hintText,
             counterText: counterText ?? "",
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Colors.white.withOpacity(0.75),
             isDense: true,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -721,10 +664,112 @@ class _ReadOnlyBlock extends StatelessWidget {
   }
 }
 
+class _ReviewFigmaTile extends StatelessWidget {
+  const _ReviewFigmaTile({
+    required this.name,
+    required this.rating,
+    required this.text,
+  });
+
+  final String name;
+  final int rating;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F3FB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: ClientProfile.kBorder.withOpacity(0.7),
+          width: 1.1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: ClientProfile.kBorder.withOpacity(0.6)),
+            ),
+            child: const Icon(Icons.person_outline, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    _StarsReadOnly(value: rating.toDouble(), size: 16),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  const _ActionBtn({
+    required this.text,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String text;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size.fromHeight(48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.white.withOpacity(0.6),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 class _StarsReadOnly extends StatelessWidget {
   const _StarsReadOnly({required this.value, this.size = 20});
 
-  final double value; // 0..5
+  final double value;
   final double size;
 
   @override
