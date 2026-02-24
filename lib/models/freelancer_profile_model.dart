@@ -68,7 +68,10 @@ class FreelancerProfileModel {
     required double rating,
   }) {
     data ??= {};
-
+    final portRaw = data['portfolioUrls'];
+    final ports = (portRaw is List)
+    ? portRaw.map((e) => e.toString()).toList()
+    : <String>[];  
     return FreelancerProfileModel(
       uid: uid,
       nationalId: data['nationalId'] ?? '',
@@ -82,7 +85,7 @@ class FreelancerProfileModel {
       workingMode: data['workingMode'] ?? 'remote',
       iban: data['iban'],
       experiences: [],
-      portfolioUrls: [],
+      portfolioUrls: ports,
     );
   }
 }

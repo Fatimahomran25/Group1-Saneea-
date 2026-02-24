@@ -251,6 +251,32 @@ if (pickedImageFile != null) {
 
   photoUrl = await ref.getDownloadURL();
 }
+
+// ===== رفع صور البورتفوليو =====
+final List<String> uploadedPortfolioUrls = [];
+
+for (final file in pickedPortfolioFiles) {
+  final id = DateTime.now().microsecondsSinceEpoch.toString();
+
+  final ref = _storage
+      .ref()
+      .child('users/$uid/portfolio/$id.jpg');
+
+  await ref.putFile(
+    file,
+    SettableMetadata(contentType: 'image/jpeg'),
+  );
+
+  final url = await ref.getDownloadURL();
+
+  uploadedPortfolioUrls.add(url);
+}
+
+// دمج القديم + الجديد
+final mergedPortfolioUrls = [
+  ...profile!.portfolioUrls,
+  ...uploadedPortfolioUrls,
+];
       final newName = nameCtrl.text.trim();
       final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
       final firstName = parts.isNotEmpty ? parts.first : '';
@@ -286,6 +312,7 @@ if (pickedImageFile != null) {
     'workingMode': profile!.workingMode,
     'experiences': profile!.experiences.map((e) => e.toMap()).toList(),
     'iban': ibanToSave,
+    'portfolioUrls': mergedPortfolioUrls,
   if (photoUrl != null) 'photoUrl': photoUrl,
 }, SetOptions(merge: true));
 
@@ -303,6 +330,7 @@ if (pickedImageFile != null) {
         bio: safeBio,
         photoUrl: photoUrl,
         iban: ibanToSave.isEmpty ? null : ibanToSave,
+        portfolioUrls: mergedPortfolioUrls,
       );
 
       isEditing = false;

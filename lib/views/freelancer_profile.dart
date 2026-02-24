@@ -175,7 +175,7 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                               profile: c.profile!,
                               isEditing: c.isEditing,
                               pickedImageFile: c.pickedImageFile,
-                              onPickImage: _pickProfileImage,
+                              onPickImage: () => _pickProfileImage(),
                               nameCtrl: c.nameCtrl,
                               titleCtrl: c.titleCtrl,
                               onEditTap: c.isEditing ? null : c.startEdit,
@@ -381,47 +381,68 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                                     ),
                                     const SizedBox(height: 10),
 
-                                    GridView.builder(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      itemCount: c.pickedPortfolioFiles.isEmpty
-                                          ? 4
-                                          : c.pickedPortfolioFiles.length,
-                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 10,
-                                        mainAxisSpacing: 10,
-                                      ),
-                                      itemBuilder: (ctx, i) {
-                                        if (c.pickedPortfolioFiles.isEmpty) {
-                                          return _PlaceholderTile(purple: kPurple);
-                                        }
-                                        final f = c.pickedPortfolioFiles[i];
-                                        return Stack(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.circular(12),
-                                              child: Image.file(
-                                                f,
-                                                fit: BoxFit.cover,
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                              ),
-                                            ),
-                                            if (c.isEditing)
-                                              Positioned(
-                                                top: 6,
-                                                right: 6,
-                                                child: IconButton(
-                                                  onPressed: () => c.removePortfolioAt(i),
-                                                  icon: const Icon(Icons.close, color: Colors.red),
-                                                  style: IconButton.styleFrom(backgroundColor: Colors.white),
-                                                ),
-                                              ),
-                                          ],
-                                        );
-                                      },
-                                    ),
+        Builder(
+  builder: (context) {
+    final net = c.profile!.portfolioUrls;
+    final local = c.pickedPortfolioFiles;
+    final total = net.length + local.length;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: total == 0 ? 4 : total,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (ctx, i) {
+        if (total == 0) {
+          return _PlaceholderTile(purple: kPurple);
+        }
+
+        if (i < net.length) {
+          final url = net[i];
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          );
+        }
+
+        final localIndex = i - net.length;
+        final f = local[localIndex];
+
+        return Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                f,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+            if (c.isEditing)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: IconButton(
+                  onPressed: () => c.removePortfolioAt(localIndex),
+                  icon: const Icon(Icons.close, color: Colors.red),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  },
+),
                                   ],
                                 ),
                               ),
