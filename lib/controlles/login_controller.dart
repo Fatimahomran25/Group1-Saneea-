@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class LoginController {
+  final nationalIdCtrl = TextEditingController();
+  final passwordCtrl = TextEditingController();
+
+  bool submitted = false;
+  bool isLoading = false;
+  bool obscurePassword = true;
+
+  String? serverError;
+
+  void togglePasswordVisibility() {
+    obscurePassword = !obscurePassword;
+  }
+
+  void submit() {
+    submitted = true;
+  }
+
+  void dispose() {
+    nationalIdCtrl.dispose();
+    passwordCtrl.dispose();
+  }
+
+  // ==========================
+  // Validation
+  // ==========================
+
+  bool get isNationalIdValid {
+    final v = nationalIdCtrl.text.trim();
+    return v.length == 10;
+  }
+
+  bool get allRequiredValid =>
+      isNationalIdValid && passwordCtrl.text.trim().isNotEmpty;
+
+  // ==========================
+  // Field Errors
+  // ==========================
+
+  String? get nationalIdFieldError {
+    final v = nationalIdCtrl.text.trim();
+    if (!submitted) return null;
+    if (v.isEmpty) return 'National ID / Iqama is required.';
+    if (v.length != 10) return 'National ID / Iqama must be 10 digits.';
+    return null;
+  }
+
+  String? get passwordFieldError {
+    final v = passwordCtrl.text;
+    if (!submitted) return null;
+    if (v.trim().isEmpty) return 'Password is required.';
+    return null;
+  }
+
+  // ==========================
+  // Firebase Helpers
+  // ==========================
+
+  Future<String?> _emailByNationalId(String nid) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .where('nationalId', isEqualTo: nid)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) return null;
+
+    final data = snap.docs.first.data();
+    final email = (data['email'] ?? '').toString().trim();
+    return email.isEmpty ? null : email;
+  }
+
+  String _mapAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-credential':
+      case 'wrong-password':
+      case 'user-not-found':
+        return 'National ID / Password is incorrect.';
+      case 'network-request-failed':
+        return 'Check your internet connection.';
+      case 'operation-not-allowed':
+        return 'Login service is currently unavailable.';
+      default:
+        return 'Login failed. Please try again.';
+    }
+  }
+
+  Future<bool> login() async {
+    serverError = null;
+    submitted = true;
+
+    if (!allRequiredValid) return false;
+
+    final nid = nationalIdCtrl.text.trim();
+    final pass = passwordCtrl.text;
+
+    isLoading = true;
+
+    try {
+      final email = await _emailByNationalId(nid);
+
+      if (email == null) {
+        serverError = 'National ID / Password is incorrect.';
+        return false;
+      }
+
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: pass,
+      );
+
+      return true;
+    } on FirebaseAuthException catch (e) {
+      serverError = _mapAuthError(e);
+      return false;
+    } catch (_) {
+      serverError = 'Something went wrong. Try again.';
+      return false;
+    } finally {
+      isLoading = false;
+    }
+  }
+}
