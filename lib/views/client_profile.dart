@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 import '../controlles/client_profile_controller.dart';
 
@@ -40,16 +41,67 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
   final _formKey = GlobalKey<FormState>();
 
   Future<void> _pickProfileImage(ClientProfileController c) async {
-    if (!c.isEditing) return;
+  if (!c.isEditing) return;
 
-    final XFile? x = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (x == null) return;
+  // ✅ Choose Camera or Gallery
+  final source = await showModalBottomSheet<ImageSource>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+    ),
+    builder: (_) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Choose from Gallery'),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_camera),
+            title: const Text('Take a Photo'),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
 
-    c.setPickedImage(File(x.path));
-  }
+  if (source == null) return;
+
+  // ✅ Pick image
+  final XFile? x = await ImagePicker().pickImage(
+    source: source,
+    imageQuality: 90,
+  );
+  if (x == null) return;
+
+ // ✅ Crop / Edit image
+final cropped = await ImageCropper().cropImage(
+  sourcePath: x.path,
+  compressQuality: 90,
+
+  // ✅ Force square (1:1) بدون aspectRatioPresets
+  aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+
+  uiSettings: [
+    AndroidUiSettings(
+      toolbarTitle: 'Edit Photo',
+      lockAspectRatio: true,
+    ),
+    IOSUiSettings(
+      title: 'Edit Photo',
+      aspectRatioLockEnabled: true,
+    ),
+  ],
+);
+
+if (cropped == null) return;
+
+c.setPickedImage(File(cropped.path));
+}
 
   @override
   Widget build(BuildContext context) {
