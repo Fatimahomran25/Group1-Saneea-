@@ -2,7 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:image_cropper/image_cropper.dart';
 import '../controlles/freelancer_profile_controller.dart';
 import '../models/freelancer_profile_model.dart';
 
@@ -33,12 +33,43 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
     super.dispose();
   }
 
-  Future<void> _pickProfileImage() async {
-    if (!c.isEditing) return;
+ Future<void> _pickProfileImage() async {
+  if (!c.isEditing) return;
+
+  try {
     final picker = ImagePicker();
-    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final x = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
     if (x == null) return;
-    c.setPickedImage(File(x.path));
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: x.path,
+      compressQuality: 90,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Edit Photo',
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Edit Photo',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+
+    if (cropped == null) return;
+
+    c.setPickedImage(File(cropped.path));
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Pick/Crop failed: $e')),
+    );
+  }
+;
   }
 
   Future<void> _pickPortfolioImages() async {
@@ -615,10 +646,10 @@ class _Header extends StatelessWidget {
                                 radius: 41,
                                 backgroundColor: const Color(0xFFF2EAFB),
                                 backgroundImage: pickedImageFile != null
-                                    ? FileImage(pickedImageFile!)
-                                    : (profile.photoUrl != null
-                                        ? NetworkImage(profile.photoUrl!) as ImageProvider
-                                        : null),
+                                ? FileImage(pickedImageFile!)
+                                : (profile.photoUrl != null && profile.photoUrl!.isNotEmpty
+                                 ? NetworkImage(profile.photoUrl!)
+                                     : null),
                                 child: (pickedImageFile == null && profile.photoUrl == null)
                                     ? Icon(Icons.person, color: purple, size: 34)
                                     : null,

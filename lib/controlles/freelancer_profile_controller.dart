@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/freelancer_profile_model.dart';
 
 class FreelancerProfileController extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
-
+ final _storage = FirebaseStorage.instance;
   bool isLoading = true;
   bool isSaving = false;
   bool isEditing = false;
@@ -241,7 +241,16 @@ class FreelancerProfileController extends ChangeNotifier {
     try {
       final user = _auth.currentUser;
       if (user == null) throw "Not logged in";
+      final uid = user.uid;
+      String? photoUrl = profile!.photoUrl;
 
+if (pickedImageFile != null) {
+  final ref = _storage.ref().child('users/$uid/profile.jpg');
+
+  await ref.putFile(pickedImageFile!);
+
+  photoUrl = await ref.getDownloadURL();
+}
       final newName = nameCtrl.text.trim();
       final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
       final firstName = parts.isNotEmpty ? parts.first : '';
@@ -264,8 +273,7 @@ class FreelancerProfileController extends ChangeNotifier {
       // نخليه اختياري: لو فاضي نخزن null أو "" (أنا بخليه "")
       final ibanToSave = newIban.isEmpty ? "" : newIban;
 
-      // (رفع صورة لستوريج لاحقا
-      String? photoUrl = profile!.photoUrl;
+      
 
        await  _db.collection('users').doc(user.uid).set({
       'name': newName,
