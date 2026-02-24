@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,10 +9,11 @@ import '../controlles/client_profile_controller.dart';
 class ClientProfile extends StatelessWidget {
   const ClientProfile({super.key});
 
-  // colors close to figma
-  static const Color kPurple = Color(0xFF3A1B63);
-  static const Color kSoftBg = Color(0xFFF5F0FA);
-  static const Color kBorder = Color(0x663A1B63);
+  // ✅ MATCH AdminProfile colors
+  static const Color kPurple = Color.fromRGBO(79, 55, 139, 1);
+  static const Color kHeaderBg = Color(0xFFF2EAFB);
+  static const Color kCardBg = Color(0xFFF4F1FA);
+  static const Color kSoftBorder = Color(0x66B8A9D9);
 
   @override
   Widget build(BuildContext context) {
@@ -41,67 +41,61 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
   final _formKey = GlobalKey<FormState>();
 
   Future<void> _pickProfileImage(ClientProfileController c) async {
-  if (!c.isEditing) return;
+    if (!c.isEditing) return;
 
-  // ✅ Choose Camera or Gallery
-  final source = await showModalBottomSheet<ImageSource>(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-    ),
-    builder: (_) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.photo_library),
-            title: const Text('Choose from Gallery'),
-            onTap: () => Navigator.pop(context, ImageSource.gallery),
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_camera),
-            title: const Text('Take a Photo'),
-            onTap: () => Navigator.pop(context, ImageSource.camera),
-          ),
-          const SizedBox(height: 8),
-        ],
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-    ),
-  );
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
 
-  if (source == null) return;
+    if (source == null) return;
 
-  // ✅ Pick image
-  final XFile? x = await ImagePicker().pickImage(
-    source: source,
-    imageQuality: 90,
-  );
-  if (x == null) return;
+    final XFile? x = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 90,
+    );
+    if (x == null) return;
 
- // ✅ Crop / Edit image
-final cropped = await ImageCropper().cropImage(
-  sourcePath: x.path,
-  compressQuality: 90,
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: x.path,
+      compressQuality: 90,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Edit Photo',
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Edit Photo',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
 
-  // ✅ Force square (1:1) بدون aspectRatioPresets
-  aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+    if (cropped == null) return;
 
-  uiSettings: [
-    AndroidUiSettings(
-      toolbarTitle: 'Edit Photo',
-      lockAspectRatio: true,
-    ),
-    IOSUiSettings(
-      title: 'Edit Photo',
-      aspectRatioLockEnabled: true,
-    ),
-  ],
-);
-
-if (cropped == null) return;
-
-c.setPickedImage(File(cropped.path));
-}
+    c.setPickedImage(File(cropped.path));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +109,7 @@ c.setPickedImage(File(cropped.path));
     }
 
     final p = c.profile!;
-    final purple = ClientProfile.kPurple;
+    const purple = ClientProfile.kPurple;
 
     ImageProvider? avatar;
     if (c.pickedImageFile != null) {
@@ -159,7 +153,9 @@ c.setPickedImage(File(cropped.path));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            ok ? "Saved successfully ✅" : (c.error ?? "Save failed"),
+                            ok
+                                ? "Saved successfully ✅"
+                                : (c.error ?? "Save failed"),
                           ),
                         ),
                       );
@@ -171,10 +167,13 @@ c.setPickedImage(File(cropped.path));
             const SizedBox(width: 8),
           ],
 
-          // ✅ Logout فوق فقط
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () => c.logout(context),
+          // ✅ Logout like Admin (red + bigger)
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.logout, color: Colors.red, size: 28),
+              onPressed: () => c.logout(context),
+            ),
           ),
         ],
       ),
@@ -183,52 +182,62 @@ c.setPickedImage(File(cropped.path));
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            _Header(
+            const SizedBox(height: 10),
+
+            _HeaderLikeAdmin(
               purple: purple,
               isEditing: c.isEditing,
               nameCtrl: c.nameCtrl,
               nameValidator: c.validateName,
               onPickImage: () => _pickProfileImage(c),
               avatar: avatar,
+              roleText: "Client",
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
-            // BIO Card
+            // ✅ ONE LONG CARD like Admin
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _SectionCard(
-                child: _EditableField(
-                  label: "Bio",
-                  enabled: c.isEditing,
-                  controller: c.bioCtrl,
-                  maxLength: ClientProfileController.bioMax,
-                  maxLines: 4,
-                  validator: c.validateBio,
-                  counterText: "${c.bioLen.clamp(0, 150)}/150",
-                  hintText: "Write your bio...",
-                  purple: purple,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+                decoration: BoxDecoration(
+                  color: ClientProfile.kCardBg,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: ClientProfile.kSoftBorder,
+                    width: 1.2,
+                  ),
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Info card: National ID + Email + Rating
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _SectionCard(
-                background: ClientProfile.kSoftBg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // BIO (editable)
+                    _EditableField(
+                      label: "Bio",
+                      enabled: c.isEditing,
+                      controller: c.bioCtrl,
+                      maxLength: ClientProfileController.bioMax,
+                      maxLines: 4,
+                      validator: c.validateBio,
+                      counterText: "${c.bioLen.clamp(0, 150)}/150",
+                      hintText: "Write your bio...",
+                      purple: purple,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // National ID (read-only)
                     _ReadOnlyBlock(
                       title: "National ID / Iqama",
                       value: p.nationalId,
                       purple: purple,
                     ),
-                    const SizedBox(height: 10),
 
+                    const SizedBox(height: 18),
+
+                    // Email (editable)
                     _EditableField(
                       label: "Email Address",
                       enabled: c.isEditing,
@@ -239,14 +248,15 @@ c.setPickedImage(File(cropped.path));
                       purple: purple,
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 18),
 
+                    // Rating (read-only)
                     Text(
                       "Rating",
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -260,62 +270,70 @@ c.setPickedImage(File(cropped.path));
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 18),
+
+                    // Reviews (inside same long card)
+                    Text(
+                      "Reviews",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    _ReviewsBox(
+                      child: c.reviews.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Text("No reviews yet."),
+                            )
+                          : ListView.builder(
+                              itemCount: c.reviews.length,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemBuilder: (context, i) {
+                                final r = c.reviews[i];
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: i == c.reviews.length - 1 ? 0 : 12,
+                                  ),
+                                  child: _ReviewTile(
+                                    name: r.reviewerName,
+                                    rating: r.rating,
+                                    text: r.text,
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ✅ Buttons at bottom (Reset + Delete)
+                    _AdminStyleOutlinedBtn(
+                      text: "Reset password",
+                      textColor: const Color(0xFF2F7BFF),
+                      borderColor: purple.withOpacity(0.25),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        '/forgotPassword',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _AdminStyleOutlinedBtn(
+                      text: "Delete account",
+                      textColor: Colors.red,
+                      borderColor: purple.withOpacity(0.25),
+                      onPressed: () => c.deleteAccount(context),
+                    ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 14),
-
-            // Reviews title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "Reviews",
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // ✅ Reviews outer box + inner boxes (figma-like)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _ReviewsOuterCard(
-                child: c.reviews.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text("No reviews yet."),
-                      )
-                    : Column(
-                        children: c.reviews
-                            .map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _ReviewFigmaTile(
-                                  name: r.reviewerName,
-                                  rating: r.rating,
-                                  text: r.text,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-              ),
-            ),
-
             const SizedBox(height: 16),
-
-            // ✅ تحت: Reset + Delete فقط
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _AccountActionsCard(
-                onResetPassword: () => Navigator.pushNamed(context, '/forgotPassword'),
-                onDelete: () => c.deleteAccount(context),
-              ),
-            ),
           ],
         ),
       ),
@@ -323,16 +341,17 @@ c.setPickedImage(File(cropped.path));
   }
 }
 
-// ---------------- Widgets ----------------
+// ---------------- Widgets (UI only) ----------------
 
-class _Header extends StatelessWidget {
-  const _Header({
+class _HeaderLikeAdmin extends StatelessWidget {
+  const _HeaderLikeAdmin({
     required this.purple,
     required this.isEditing,
     required this.nameCtrl,
     required this.nameValidator,
     required this.onPickImage,
     required this.avatar,
+    required this.roleText,
   });
 
   final Color purple;
@@ -341,131 +360,111 @@ class _Header extends StatelessWidget {
   final String? Function(String?) nameValidator;
   final VoidCallback onPickImage;
   final ImageProvider? avatar;
+  final String roleText;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          height: 210,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2EAFB),
-            border: Border.all(color: purple.withOpacity(0.25)),
+      child: Container(
+        height: 210,
+        decoration: BoxDecoration(
+          color: ClientProfile.kHeaderBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: purple.withOpacity(0.22),
+            width: 1.2,
           ),
-          child: Stack(
-            children: [
-              // decorative circles (like figma)
-              Positioned(
-                top: -40,
-                right: -30,
-                child: Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    color: purple.withOpacity(0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: purple.withOpacity(0.18)),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 30,
-                right: 20,
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: purple.withOpacity(0.18)),
-                  ),
-                ),
-              ),
-
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+        ),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: Stack(
                     children: [
-                      // Avatar
-                      GestureDetector(
-                        onTap: isEditing ? onPickImage : null,
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 44,
-                              backgroundColor: Colors.white,
-                              child: CircleAvatar(
-                                radius: 41,
-                                backgroundColor: const Color(0xFFF2EAFB),
-                                backgroundImage: avatar,
-                                child: avatar == null
-                                    ? Icon(Icons.person, color: purple, size: 34)
-                                    : null,
-                              ),
-                            ),
-                            if (isEditing)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 26,
-                                  height: 26,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: purple.withOpacity(0.35)),
-                                  ),
-                                  child: Icon(Icons.camera_alt, size: 14, color: purple),
+                      Center(
+                        child: CircleAvatar(
+                          radius: 44,
+                          backgroundColor: Colors.white,
+                          child: CircleAvatar(
+                            radius: 41,
+                            backgroundColor: ClientProfile.kHeaderBg,
+                            backgroundImage: avatar,
+                            child: avatar == null
+                                ? Icon(Icons.person, color: purple, size: 34)
+                                : null,
+                          ),
+                        ),
+                      ),
+                      if (isEditing)
+                        Positioned(
+                          right: 10,
+                          bottom: 8,
+                          child: GestureDetector(
+                            onTap: onPickImage,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: purple,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Name (editable)
-                      SizedBox(
-                        width: 250,
-                        child: TextFormField(
-                          controller: nameCtrl,
-                          enabled: isEditing,
-                          validator: nameValidator,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: purple,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            disabledBorder: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 2),
+                              child: const Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-
-                      Text(
-                        "Client",
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: 260,
+                  child: TextFormField(
+                    controller: nameCtrl,
+                    enabled: isEditing,
+                    validator: nameValidator,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: purple,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  roleText,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -473,29 +472,131 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child, this.background});
-
+class _ReviewsBox extends StatelessWidget {
+  const _ReviewsBox({required this.child});
   final Widget child;
-  final Color? background;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: background ?? Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          )
-        ],
+        border: Border.all(
+          color: ClientProfile.kSoftBorder,
+          width: 1.2,
+        ),
       ),
       child: child,
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({
+    required this.name,
+    required this.rating,
+    required this.text,
+  });
+
+  final String name;
+  final int rating;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F3FB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: ClientProfile.kSoftBorder.withOpacity(0.85),
+          width: 1.1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: ClientProfile.kSoftBorder.withOpacity(0.8),
+              ),
+            ),
+            child: const Icon(Icons.person_outline, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    _StarsReadOnly(value: rating.toDouble(), size: 16),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminStyleOutlinedBtn extends StatelessWidget {
+  const _AdminStyleOutlinedBtn({
+    required this.text,
+    required this.textColor,
+    required this.borderColor,
+    required this.onPressed,
+  });
+
+  final String text;
+  final Color textColor;
+  final Color borderColor;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: BorderSide(color: borderColor, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -530,7 +631,7 @@ class _EditableField extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: purple.withOpacity(0.35), width: 1.2),
+      borderSide: BorderSide(color: purple.withOpacity(0.25), width: 1.2),
     );
 
     return Column(
@@ -557,9 +658,10 @@ class _EditableField extends StatelessWidget {
             hintText: hintText,
             counterText: counterText ?? "",
             filled: true,
-            fillColor: Colors.white.withOpacity(0.75),
+            fillColor: Colors.white,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(
@@ -615,164 +717,6 @@ class _ReadOnlyBlock extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ReviewsOuterCard extends StatelessWidget {
-  const _ReviewsOuterCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _ReviewFigmaTile extends StatelessWidget {
-  const _ReviewFigmaTile({
-    required this.name,
-    required this.rating,
-    required this.text,
-  });
-
-  final String name;
-  final int rating;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F3FB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: ClientProfile.kBorder.withOpacity(0.7),
-          width: 1.1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ClientProfile.kBorder.withOpacity(0.6)),
-            ),
-            child: const Icon(Icons.person_outline, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    _StarsReadOnly(value: rating.toDouble(), size: 16),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  text,
-                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountActionsCard extends StatelessWidget {
-  const _AccountActionsCard({
-    required this.onResetPassword,
-    required this.onDelete,
-  });
-
-  final VoidCallback onResetPassword;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-        decoration: BoxDecoration(
-          color: ClientProfile.kSoftBg,
-          border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-        ),
-        child: Column(
-          children: [
-            _ActionBtn(
-              text: "Reset password",
-              color: Colors.blue,
-              onPressed: onResetPassword,
-            ),
-            const SizedBox(height: 12),
-            _ActionBtn(
-              text: "Delete account",
-              color: Colors.red,
-              onPressed: onDelete,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({
-    required this.text,
-    required this.color,
-    required this.onPressed,
-  });
-
-  final String text;
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: Colors.grey.shade300),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        backgroundColor: Colors.white.withOpacity(0.6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
     );
   }
 }
