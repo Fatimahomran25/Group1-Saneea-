@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/signup_model.dart';
+import 'dart:async';
 
 /// SignupController acts as the "Controller" for the SignupScreen:
 /// - Holds TextEditingControllers for all input fields
@@ -29,6 +30,7 @@ class SignupController {
   /// Holds server-side errors (Firebase/Auth/Firestore) to display in the UI.
   /// Example: email already exists, nationalId already exists, etc.
   String? serverError;
+  bool isLoading = false;
 
   // ===== HELPERS =====
 
@@ -159,66 +161,77 @@ class SignupController {
   /// - AccountType on success (so the UI can navigate to the correct home page)
   /// - null on failure (and sets serverError for the UI)
   Future<AccountType?> createAccount() async {
-    // Clear old server error whenever a new attempt starts.
+    if (isLoading) return null;
+
+    isLoading = true;
     serverError = null;
 
-    // Stop early if any required field is invalid.
-    if (!allRequiredValid) return null;
-
-    // Read sanitized values from text fields.
-    final nationalId = nationalIdCtrl.text.trim();
-    final firstName = firstNameCtrl.text.trim();
-    final lastName = lastNameCtrl.text.trim();
-    final email = emailCtrl.text.trim();
-    final password = passwordCtrl.text;
-
-    // accountType is non-null here because allRequiredValid is true.
-    final accountType = model.accountType!;
-
     try {
-      // Firestore uniqueness check for National ID / Iqama.
-      // Prevents multiple accounts from using the same nationalId.
+      if (!allRequiredValid) return null;
+
+      final nationalId = nationalIdCtrl.text.trim();
+      final firstName = firstNameCtrl.text.trim();
+      final lastName = lastNameCtrl.text.trim();
+      final email = emailCtrl.text.trim();
+      final password = passwordCtrl.text;
+      final accountType = model.accountType!;
+
       final existing = await FirebaseFirestore.instance
           .collection('users')
           .where('nationalId', isEqualTo: nationalId)
           .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 8));
 
       if (existing.docs.isNotEmpty) {
         serverError = "National ID / Iqama already exists.";
         return null;
       }
 
-      // Create authentication account in FirebaseAuth.
       final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+          .createUserWithEmailAndPassword(email: email, password: password)
+          .timeout(const Duration(seconds: 8));
 
-      // UID is the primary identifier for the authenticated user.
       final uid = credential.user!.uid;
 
-      // Store user profile data in Firestore under users/{uid}.
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'accountType': accountType.name,
-        'nationalId': nationalId,
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        // Server timestamp ensures consistent time regardless of client device time.
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({
+            'accountType': accountType.name,
+            'nationalId': nationalId,
+            'firstName': firstName,
+            'lastName': lastName,
+            'email': email,
+            'createdAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 8));
 
-      // Return type so the UI can navigate accordingly.
-      return accountType; // ✅ this enables navigation based on account type
+      return accountType;
     } on FirebaseAuthException catch (e) {
-      // FirebaseAuth-specific errors (email already used, weak password, etc.)
-      serverError = e.code == 'email-already-in-use'
-          ? "Email already exists. Try a different email."
-          : (e.message ?? "Auth error.");
+      if (e.code == 'network-request-failed') {
+        serverError = "No internet connection.";
+      } else if (e.code == 'email-already-in-use') {
+        serverError = "Email already exists. Try a different email.";
+      } else {
+        serverError = e.message ?? "Auth error.";
+      }
+      return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
+        serverError = "No internet connection. Please try again.";
+      } else {
+        serverError = "Database error. Try again.";
+      }
+      return null;
+    } on TimeoutException {
+      serverError = "Connection timed out. Check your internet.";
       return null;
     } catch (_) {
-      // Any other unexpected errors (network, permissions, etc.)
       serverError = "Something went wrong. Try again.";
       return null;
+    } finally {
+      isLoading = false;
     }
   }
 

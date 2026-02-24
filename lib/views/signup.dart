@@ -465,30 +465,35 @@ class _SignupScreenState extends State<SignupScreen> {
                     width: formW,
                     height: 46,
                     child: ElevatedButton(
-                      onPressed: () async {
-                        // Marks the form as submitted (used by validation UI).
-                        setState(c.submit);
+                      onPressed: c.isLoading
+                          ? null
+                          : () async {
+                              // Marks the form as submitted (used by validation UI).
+                              setState(c.submit);
+                              
 
-                        // Attempts account creation; returns AccountType on success or null on failure.
-                        final type = await c.createAccount();
+                              // Attempts account creation; returns AccountType on success or null on failure.
+                              final type = await c.createAccount();
 
-                        // Rebuild UI to show serverError if any.
-                        setState(() {});
+                              // Rebuild UI to show serverError if any.
+                              setState(() {});
 
-                        // Avoid navigation if widget is no longer in the tree.
-                        if (!mounted) return;
+                              // Avoid navigation if widget is no longer in the tree.
+                              if (!context.mounted) return;
+                              
 
-                        // Stop if createAccount failed.
-                        if (type == null) return;
+                              // Stop if createAccount failed.
+                              if (type == null) return;
+                              
 
-                        // Navigate based on selected account type.
-                        Navigator.pushReplacementNamed(
-                          this.context,
-                          type == AccountType.freelancer
-                              ? '/freelancerHome'
-                              : '/clientHome',
-                        );
-                      },
+                              // Navigate based on selected account type.
+                              Navigator.pushReplacementNamed(
+                                context,
+                                type == AccountType.freelancer
+                                    ? '/freelancerHome'
+                                    : '/clientHome',
+                              );
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryPurple,
                         shape: RoundedRectangleBorder(
@@ -496,14 +501,23 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         elevation: 6,
                       ),
-                      child: const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: c.isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Create Account',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
 
