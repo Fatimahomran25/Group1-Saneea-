@@ -1,642 +1,862 @@
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-class FreelancerProfilePage extends StatefulWidget {
-  const FreelancerProfilePage({super.key});
+import '../controlles/freelancer_profile_controller.dart';
+import '../models/freelancer_profile_model.dart';
+
+class FreelancerProfileView extends StatefulWidget {
+  const FreelancerProfileView({super.key});
 
   @override
-  State<FreelancerProfilePage> createState() => _FreelancerProfilePageState();
+  State<FreelancerProfileView> createState() => _FreelancerProfileViewState();
 }
 
-class _FreelancerProfilePageState extends State<FreelancerProfilePage> {
-  // ===== ثابتات (غير قابلة للتعديل) =====
-  final String nationalId = "1110000000";
-  final double rating = 4.0;
+class _FreelancerProfileViewState extends State<FreelancerProfileView> {
+  final c = FreelancerProfileController();
+  final _formKey = GlobalKey<FormState>();
 
-  // ===== بيانات قابلة للتعديل =====
-  bool isEditing = false;
-
-  late final TextEditingController nameC;
-  late final TextEditingController titleC;
-  late final TextEditingController emailC;
-  late final TextEditingController bioC;
-
-  // خيارات مثل مشروعكم
-  static const List<String> serviceTypeOptions = ["one-time", "part-time", "full-time"];
-  static const List<String> workingModeOptions = ["in person", "remote", "hybrid"];
-
-  // مجالات الفريلانس (مثل اللي في تقريركم)
-  static const List<String> domainOptions = [
-    "Graphic Design",
-    "Software Development",
-    "Marketing",
-    "Accounting",
-    "Tutoring",
-    "UI/UX",
-    "Illustration",
-    "Branding",
-  ];
-
-  String serviceType = "one-time";
-  String workingMode = "in person";
-
-  // Bio validation
-  String? emailError;
-  static const int bioMax = 140;
-
-  // صور
-  File? profileImageFile;
-  final List<File> portfolioFiles = [];
-
-  // Experience list (ممكن أكثر من واحد)
-  final List<ExperienceItem> experiences = [];
-
-  late _Snapshot snapshot;
-
-  // ========= Styles =========
-  static const Color kCardBg = Color(0xFFF6F4F9);
-  static const Color kCardBorder = Color(0xFFE6E0EF);
-  static const Color kAccent = Colors.deepPurple;
-  static const Color kMuted = Colors.grey;
+  static const Color kPurple = Color(0xFF4F378B);
+  static const Color kSoftBg = Color(0xFFF4F1FA);
+  static const Color kBorder = Color(0x66B8A9D9);
 
   @override
   void initState() {
     super.initState();
-
-    nameC = TextEditingController(text: "Manar Alrazin");
-    titleC = TextEditingController(text: "Graphic Designer");
-    emailC = TextEditingController(text: "ma.alrazin@gmail.com");
-    bioC = TextEditingController(text: "bio bio bio bio ...");
-
-    experiences.add(
-      ExperienceItem(
-        title: "Graphic Design",
-        org: "King Saud University",
-        period: "Sep 2019 - Jun 2022",
-      ),
-    );
-
-    snapshot = _takeSnapshot();
+    c.init();
   }
 
   @override
   void dispose() {
-    nameC.dispose();
-    titleC.dispose();
-    emailC.dispose();
-    bioC.dispose();
+    c.dispose();
     super.dispose();
   }
 
-  // ========= Snapshot =========
-  _Snapshot _takeSnapshot() => _Snapshot(
-        name: nameC.text,
-        title: titleC.text,
-        email: emailC.text,
-        bio: bioC.text,
-        serviceType: serviceType,
-        workingMode: workingMode,
-        profileImageFile: profileImageFile,
-        portfolioFiles: List<File>.from(portfolioFiles),
-        experiences: experiences.map((e) => e.copy()).toList(),
-      );
-
-  void _restoreSnapshot(_Snapshot s) {
-    nameC.text = s.name;
-    titleC.text = s.title;
-    emailC.text = s.email;
-    bioC.text = s.bio;
-
-    serviceType = s.serviceType;
-    workingMode = s.workingMode;
-
-    profileImageFile = s.profileImageFile;
-
-    portfolioFiles
-      ..clear()
-      ..addAll(s.portfolioFiles);
-
-    experiences
-      ..clear()
-      ..addAll(s.experiences.map((e) => e.copy()));
-
-    emailError = null;
-  }
-
-  // ========= Validation =========
-  bool _validateEmail(String v) {
-    final emailRegex = RegExp(r"^[^\s@]+@[^\s@]+\.[^\s@]+$");
-    return emailRegex.hasMatch(v.trim());
-  }
-
-  void _onEdit() {
-    setState(() {
-      snapshot = _takeSnapshot();
-      isEditing = true;
-    });
-  }
-
-  void _onCancel() {
-    setState(() {
-      _restoreSnapshot(snapshot);
-      isEditing = false;
-    });
-  }
-
-  void _onSave() {
-    setState(() {
-      emailError = null;
-
-      // enforce bio length
-      if (bioC.text.length > bioMax) {
-        bioC.text = bioC.text.substring(0, bioMax);
-      }
-
-      if (!_validateEmail(emailC.text)) {
-        emailError = "Invalid email";
-        return;
-      }
-
-      // TODO: هنا مكان حفظك الحقيقي (Firebase/Provider/Controller)
-      isEditing = false;
-    });
-  }
-
-  // ========= Pickers =========
   Future<void> _pickProfileImage() async {
-    if (!isEditing) return;
+    if (!c.isEditing) return;
     final picker = ImagePicker();
-    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (x == null) return;
-    setState(() => profileImageFile = File(x.path));
+    c.setPickedImage(File(x.path));
   }
 
-  Future<void> _addPortfolioImages() async {
-    if (!isEditing) return;
+  Future<void> _pickPortfolioImages() async {
+    if (!c.isEditing) return;
     final picker = ImagePicker();
-    final files = await picker.pickMultiImage(imageQuality: 80);
-    if (files.isEmpty) return;
-
-    setState(() {
-      for (final f in files) {
-        portfolioFiles.add(File(f.path));
-      }
-    });
+    final xs = await picker.pickMultiImage(imageQuality: 85);
+    if (xs.isEmpty) return;
+    c.addPortfolioFiles(xs.map((e) => File(e.path)).toList());
   }
 
-  void _removePortfolioAt(int i) {
-    if (!isEditing) return;
-    setState(() => portfolioFiles.removeAt(i));
-  }
+  Future<ExperienceModel?> _experienceDialog({ExperienceModel? initial}) async {
+    final fieldCtrl = TextEditingController(text: initial?.field ?? "Graphic Design");
+    final orgCtrl = TextEditingController(text: initial?.org ?? "King Saud University");
+    final periodCtrl = TextEditingController(text: initial?.period ?? "Sep 2019 - Jun 2022");
 
-  // ========= UI Helpers =========
-  Future<void> _pickFromOptions({
-    required String title,
-    required List<String> options,
-    required String current,
-    required void Function(String v) onPicked,
-  }) async {
-    if (!isEditing) return;
-
-    final picked = await showModalBottomSheet<String>(
+    final res = await showDialog<ExperienceModel>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: ListView(
+      builder: (ctx) => AlertDialog(
+        title: Text(initial == null ? "Add Experience" : "Edit Experience"),
+        content: SingleChildScrollView(
+          child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              TextField(
+                controller: fieldCtrl,
+                decoration: const InputDecoration(labelText: "Field", border: OutlineInputBorder()),
               ),
-              ...options.map((o) {
-                final selected = o == current;
-                return ListTile(
-                  title: Text(o),
-                  trailing: selected ? const Icon(Icons.check, color: kAccent) : null,
-                  onTap: () => Navigator.pop(ctx, o),
-                );
-              }),
               const SizedBox(height: 10),
+              TextField(
+                controller: orgCtrl,
+                decoration: const InputDecoration(labelText: "Organization", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: periodCtrl,
+                decoration: const InputDecoration(labelText: "Period", border: OutlineInputBorder()),
+              ),
             ],
           ),
-        );
-      },
-    );
-
-    if (picked == null) return;
-    setState(() => onPicked(picked));
-  }
-
-  // Experience add/edit dialog
-  Future<void> _editExperience({ExperienceItem? item, int? index}) async {
-    if (!isEditing) return;
-
-    final title = TextEditingController(text: item?.title ?? domainOptions.first);
-    final org = TextEditingController(text: item?.org ?? "King Saud University");
-    final period = TextEditingController(text: item?.period ?? "Sep 2019 - Jun 2022");
-
-    final result = await showDialog<ExperienceItem>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: Text(item == null ? "Add Experience" : "Edit Experience"),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: title.text,
-                  items: domainOptions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                  onChanged: (v) => title.text = v ?? title.text,
-                  decoration: const InputDecoration(labelText: "Field", border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: kPurple),
+            onPressed: () {
+              Navigator.pop(
+                ctx,
+                ExperienceModel(
+                  field: fieldCtrl.text.trim(),
+                  org: orgCtrl.text.trim(),
+                  period: periodCtrl.text.trim(),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: org,
-                  decoration: const InputDecoration(labelText: "Organization", border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: period,
-                  decoration: const InputDecoration(labelText: "Period", border: OutlineInputBorder()),
-                ),
-              ],
-            ),
+              );
+            },
+            child: const Text("Save"),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(
-                  ctx,
-                  ExperienceItem(title: title.text.trim(), org: org.text.trim(), period: period.text.trim()),
-                );
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
 
-    if (result == null) return;
-    setState(() {
-      if (item == null) {
-        experiences.add(result);
-      } else {
-        experiences[index!] = result;
-      }
-    });
+    fieldCtrl.dispose();
+    orgCtrl.dispose();
+    periodCtrl.dispose();
+    return res;
   }
 
   @override
   Widget build(BuildContext context) {
-    final bioCount = bioC.text.length.clamp(0, bioMax);
+    final mq = MediaQuery.of(context);
+    final fixedMq = mq.copyWith(textScaler: const TextScaler.linear(1.0));
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: const BackButton(),
-        title: const Text("Freelancer Profile"),
-        actions: [
-          if (!isEditing) IconButton(icon: const Icon(Icons.edit), onPressed: _onEdit),
-          if (isEditing) ...[
-            TextButton(onPressed: _onCancel, child: const Text("Cancel")),
-            TextButton(onPressed: _onSave, child: const Text("Save")),
-          ],
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _headerCard(),
-            const SizedBox(height: 12),
+    return MediaQuery(
+      data: fixedMq,
+      child: AnimatedBuilder(
+        animation: c,
+        builder: (context, _) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: const BackButton(color: Colors.black),
+              actions: [
+                // ✅ Logout فوق على الجنب
+                IconButton(
+                  tooltip: "Log out",
+                  onPressed: () => c.logout(context),
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ),
+            body: c.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : (c.profile == null)
+                    ? Center(child: Text(c.error ?? "Failed to load profile"))
+                    : Form(
+                        key: _formKey,
+                        child: ListView(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          children: [
+                            _Header(
+                              purple: kPurple,
+                              profile: c.profile!,
+                              isEditing: c.isEditing,
+                              pickedImageFile: c.pickedImageFile,
+                              onPickImage: _pickProfileImage,
+                              nameCtrl: c.nameCtrl,
+                              titleCtrl: c.titleCtrl,
+                              onEditTap: c.isEditing ? null : c.startEdit,
+                              nameValidator: c.validateName,
+                              titleValidator: c.validateTitle,
+                            ),
 
-            // Bio (مثل تصميمكم: عنوان + نص + قلم)
-            _sectionCard(
-              title: "Bio",
-              onEdit: isEditing
-                  ? () async {
-                      // focus on bio field
-                    }
-                  : null,
-              child: isEditing
-                  ? TextField(
-                      controller: bioC,
-                      maxLength: bioMax,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: "Write a short bio...",
-                        counterText: "$bioCount/$bioMax",
-                        border: const OutlineInputBorder(),
+                            const SizedBox(height: 10),
+
+                            // Bio
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                child: _EditableField(
+                                  label: "Bio",
+                                  enabled: c.isEditing,
+                                  controller: c.bioCtrl,
+                                  maxLength: FreelancerProfileController.bioMax,
+                                  maxLines: 4,
+                                  validator: c.validateBio,
+                                  counterText:
+                                      "${c.bioLen.clamp(0, FreelancerProfileController.bioMax)}/${FreelancerProfileController.bioMax}",
+                                  hintText: "Write your bio...",
+                                  purple: kPurple,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Info + options + experience
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                background: kSoftBg,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _ReadOnlyBlock(
+                                      title: "National ID / Iqama",
+                                      value: c.profile!.nationalId,
+                                      purple: kPurple,
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    _EditableField(
+                                      label: "Email Address",
+                                      enabled: c.isEditing,
+                                      controller: c.emailCtrl,
+                                      keyboardType: TextInputType.emailAddress,
+                                      validator: c.validateGmail,
+                                      hintText: "name@gmail.com",
+                                      purple: kPurple,
+                                    ),
+
+                                    const SizedBox(height: 12),
+
+                                    // ✅ IBAN field + bank icon (يدخلك صفحة البنك إذا عندك route)
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Expanded(
+                                          child: _EditableField(
+                                            label: "IBAN (optional)",
+                                            enabled: c.isEditing,
+                                            controller: c.ibanCtrl,
+                                            validator: c.validateIban,
+                                            hintText: "SA00 0000 0000 0000 0000 0000",
+                                            purple: kPurple,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        IconButton(
+                                          tooltip: "Bank account",
+                                          onPressed: () {
+                                            // لو عندك صفحة bank_account.dart اربطيها بالراوت
+                                            Navigator.pushNamed(context, '/bankAccount');
+                                          },
+                                          icon: Icon(Icons.account_balance, color: kPurple),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    Text(
+                                      "Service Type",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _SegmentBar(
+                                      options: FreelancerProfileController.serviceTypeOptions,
+                                      value: c.profile!.serviceType,
+                                      enabled: c.isEditing,
+                                      onChanged: c.setServiceType,
+                                      purple: kPurple,
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    Text(
+                                      "Working Mode",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _SegmentBar(
+                                      options: FreelancerProfileController.workingModeOptions,
+                                      value: c.profile!.workingMode,
+                                      enabled: c.isEditing,
+                                      onChanged: c.setWorkingMode,
+                                      purple: kPurple,
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "Experience",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        if (c.isEditing)
+                                          TextButton.icon(
+                                            onPressed: () async {
+                                              final res = await _experienceDialog();
+                                              if (res == null) return;
+                                              c.addExperience(res);
+                                            },
+                                            icon: const Icon(Icons.add, size: 18),
+                                            label: const Text("Add"),
+                                            style: TextButton.styleFrom(foregroundColor: kPurple),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+
+                                    ...List.generate(c.profile!.experiences.length, (i) {
+                                      final e = c.profile!.experiences[i];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 10),
+                                        child: _ExperienceCard(
+                                          purple: kPurple,
+                                          experience: e,
+                                          editable: c.isEditing,
+                                          onEdit: () async {
+                                            final res = await _experienceDialog(initial: e);
+                                            if (res == null) return;
+                                            c.editExperience(i, res);
+                                          },
+                                          onDelete: () => c.deleteExperience(i),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Portfolio (local only)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                background: Colors.white,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "Portfolio",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        if (c.isEditing)
+                                          TextButton.icon(
+                                            onPressed: _pickPortfolioImages,
+                                            icon: const Icon(Icons.add, size: 18),
+                                            label: const Text("Add"),
+                                            style: TextButton.styleFrom(foregroundColor: kPurple),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: c.pickedPortfolioFiles.isEmpty
+                                          ? 4
+                                          : c.pickedPortfolioFiles.length,
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 10,
+                                        mainAxisSpacing: 10,
+                                      ),
+                                      itemBuilder: (ctx, i) {
+                                        if (c.pickedPortfolioFiles.isEmpty) {
+                                          return _PlaceholderTile(purple: kPurple);
+                                        }
+                                        final f = c.pickedPortfolioFiles[i];
+                                        return Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: Image.file(
+                                                f,
+                                                fit: BoxFit.cover,
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                              ),
+                                            ),
+                                            if (c.isEditing)
+                                              Positioned(
+                                                top: 6,
+                                                right: 6,
+                                                child: IconButton(
+                                                  onPressed: () => c.removePortfolioAt(i),
+                                                  icon: const Icon(Icons.close, color: Colors.red),
+                                                  style: IconButton.styleFrom(backgroundColor: Colors.white),
+                                                ),
+                                              ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // ✅ Rating (UI only ثابت زي الصورة)
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                background: kSoftBg,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Rating",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const _StarsReadOnly(value: 0.0, size: 22),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          "0.0",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // ✅ Reviews (UI only ثابت)
+                            const SizedBox(height: 14),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                "Reviews",
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                background: Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  child: Center(
+                                    child: Text(
+                                      "No reviews yet.",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Buttons
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: _SectionCard(
+                                borderColor: kBorder,
+                                background: kSoftBg,
+                                child: Column(
+                                  children: [
+                                    if (c.isEditing) ...[
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              onPressed: c.isSaving ? null : c.cancelEdit,
+                                              child: const Text("Cancel"),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: FilledButton(
+                                              style: FilledButton.styleFrom(backgroundColor: kPurple),
+                                              onPressed: c.isSaving
+                                                  ? null
+                                                  : () async {
+                                                      final ok = _formKey.currentState?.validate() ?? false;
+                                                      if (!ok) return;
+
+                                                      final saved = await c.save();
+                                                      if (!mounted) return;
+
+                                                      if (saved) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text("Saved successfully ✅")),
+                                                        );
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(content: Text("Save failed: ${c.error ?? ''}")),
+                                                        );
+                                                      }
+                                                    },
+                                              child: c.isSaving
+                                                  ? const SizedBox(
+                                                      width: 18,
+                                                      height: 18,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    )
+                                                  : const Text("Done"),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ] else ...[
+                                      _ActionBtn(
+                                        text: "Reset password",
+                                        color: const Color(0xFF2F7BFF),
+                                        onPressed: () => c.goResetPassword(context),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _ActionBtn(
+                                        text: "Delete account",
+                                        color: Colors.red,
+                                        onPressed: () => c.deleteAccount(context),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      onChanged: (_) => setState(() {}),
-                    )
-                  : Text(bioC.text),
-            ),
-
-            const SizedBox(height: 12),
-            _informationCard(),
-
-            const SizedBox(height: 12),
-            _portfolioCard(),
-
-            const SizedBox(height: 12),
-            _ratingCard(),
-
-            const SizedBox(height: 12),
-            _reviewsCard(),
-
-            const SizedBox(height: 18),
-            if (!isEditing) ...[
-              TextButton(onPressed: () {}, child: const Text("Reset password")),
-              TextButton(
-                onPressed: () {},
-                child: const Text("Log out", style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ========= Cards =========
-
-  Widget _headerCard() {
-    return _card(
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _pickProfileImage,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: const Color(0xFFEFEAFB),
-                  backgroundImage: profileImageFile != null ? FileImage(profileImageFile!) : null,
-                  child: profileImageFile == null ? const Icon(Icons.person, color: kAccent) : null,
-                ),
-                if (isEditing)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.edit, size: 16, color: kAccent),
-                    ),
-                  )
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                isEditing
-                    ? TextField(
-                        controller: nameC,
-                        decoration: const InputDecoration(
-                          labelText: "Name",
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      )
-                    : Text(nameC.text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
-                isEditing
-                    ? TextField(
-                        controller: titleC,
-                        decoration: const InputDecoration(
-                          labelText: "Job Title",
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      )
-                    : Text(titleC.text, style: const TextStyle(color: kMuted)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _informationCard() {
-    return _sectionCard(
-      title: "Information",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _kvRow("National ID / Iqama", nationalId, editable: false),
-
-          const SizedBox(height: 10),
-
-          // Email (editable)
-          _kvRow(
-            "Email Address",
-            emailC.text,
-            editable: isEditing,
-            editor: isEditing
-                ? TextField(
-                    controller: emailC,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      errorText: emailError,
-                    ),
-                    onChanged: (v) {
-                      setState(() {
-                        emailError = null;
-                        if (v.isNotEmpty && !_validateEmail(v)) {
-                          emailError = "Invalid email";
-                        }
-                      });
-                    },
-                  )
-                : null,
-          ),
-
-          const SizedBox(height: 12),
-
-          // Service Type (options)
-          _optionRow(
-            label: "Service Type",
-            value: serviceType,
-            onTap: () => _pickFromOptions(
-              title: "Service Type",
-              options: serviceTypeOptions,
-              current: serviceType,
-              onPicked: (v) => serviceType = v,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Working Mode (options)
-          _optionRow(
-            label: "Working Mode",
-            value: workingMode,
-            onTap: () => _pickFromOptions(
-              title: "Working Mode",
-              options: workingModeOptions,
-              current: workingMode,
-              onPicked: (v) => workingMode = v,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Experience (مثل تصميمكم + add/edit/delete)
-          Row(
-            children: [
-              const Text("Experience", style: TextStyle(color: kMuted)),
-              const Spacer(),
-              if (isEditing)
-                TextButton.icon(
-                  onPressed: () => _editExperience(),
-                  icon: const Icon(Icons.add),
-                  label: const Text("Add"),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          Column(
-            children: List.generate(experiences.length, (i) {
-              final e = experiences[i];
-              return Padding(
-                padding: EdgeInsets.only(bottom: i == experiences.length - 1 ? 0 : 10),
-                child: _experienceTile(
-                  item: e,
-                  onEdit: isEditing ? () => _editExperience(item: e, index: i) : null,
-                  onDelete: isEditing
-                      ? () => setState(() => experiences.removeAt(i))
-                      : null,
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _portfolioCard() {
-    return _sectionCard(
-      title: "Portfolio",
-      trailing: isEditing
-          ? TextButton.icon(onPressed: _addPortfolioImages, icon: const Icon(Icons.add), label: const Text("Add"))
-          : TextButton(onPressed: () {}, child: const Text("View")),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: portfolioFiles.isEmpty ? 4 : portfolioFiles.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-        ),
-        itemBuilder: (context, i) {
-          if (portfolioFiles.isEmpty) return _placeholderTile();
-
-          final f = portfolioFiles[i];
-          return Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(f, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
-              ),
-              if (isEditing)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: IconButton(
-                    onPressed: () => _removePortfolioAt(i),
-                    icon: const Icon(Icons.close, color: Colors.red),
-                    style: IconButton.styleFrom(backgroundColor: Colors.white),
-                  ),
-                ),
-            ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _ratingCard() {
-    return _sectionCard(
-      title: "Rating",
-      child: Row(
-        children: [
-          Row(
-            children: List.generate(5, (i) {
-              final filled = i < rating.floor();
-              return Icon(filled ? Icons.star : Icons.star_border, color: Colors.amber);
-            }),
+// ---------- Widgets ----------
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.purple,
+    required this.profile,
+    required this.isEditing,
+    required this.pickedImageFile,
+    required this.onPickImage,
+    required this.nameCtrl,
+    required this.titleCtrl,
+    required this.onEditTap,
+    required this.nameValidator,
+    required this.titleValidator,
+  });
+
+  final Color purple;
+  final FreelancerProfileModel profile;
+  final bool isEditing;
+  final File? pickedImageFile;
+  final VoidCallback onPickImage;
+
+  final TextEditingController nameCtrl;
+  final TextEditingController titleCtrl;
+  final VoidCallback? onEditTap;
+
+  final String? Function(String?) nameValidator;
+  final String? Function(String?) titleValidator;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          height: 260,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2EAFB),
+            border: Border.all(color: purple.withOpacity(0.25)),
           ),
-          const SizedBox(width: 10),
-          Text(rating.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.w800)),
-          const Spacer(),
-          const Text("(fixed)", style: TextStyle(color: kMuted)),
-        ],
+          child: Stack(
+            children: [
+              Positioned(
+                top: -160,
+                right: -160,
+                child: Container(
+                  width: 420,
+                  height: 420,
+                  decoration: const BoxDecoration(color: Color(0xFFE7DDF8), shape: BoxShape.circle),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: isEditing ? onPickImage : null,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 44,
+                              backgroundColor: Colors.white,
+                              child: CircleAvatar(
+                                radius: 41,
+                                backgroundColor: const Color(0xFFF2EAFB),
+                                backgroundImage: pickedImageFile != null
+                                    ? FileImage(pickedImageFile!)
+                                    : (profile.photoUrl != null
+                                        ? NetworkImage(profile.photoUrl!) as ImageProvider
+                                        : null),
+                                child: (pickedImageFile == null && profile.photoUrl == null)
+                                    ? Icon(Icons.person, color: purple, size: 34)
+                                    : null,
+                              ),
+                            ),
+                            if (isEditing)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: purple.withOpacity(0.35)),
+                                  ),
+                                  child: Icon(Icons.camera_alt, size: 14, color: purple),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 240,
+                            child: TextFormField(
+                              controller: nameCtrl,
+                              enabled: isEditing,
+                              validator: nameValidator,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: purple, fontSize: 28, fontWeight: FontWeight.w800),
+                              decoration: const InputDecoration(
+                                hintText: 'Enter your job title (e.g., Graphic Designer)', 
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          if (!isEditing)
+                            IconButton(
+                              onPressed: onEditTap,
+                              icon: Icon(Icons.edit, color: purple, size: 20),
+                            ),
+                        ],
+                      ),
+
+                      SizedBox(
+                        width: 260,
+                        child: TextFormField(
+                          controller: titleCtrl,
+                          enabled: isEditing,
+                          validator: titleValidator,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _reviewsCard() {
-    return _sectionCard(
-      title: "Reviews",
-      child: Column(
-        children: const [
-          _ReviewTile(name: "Lina Alharbi", stars: 4, text: "Very good work and fast delivery."),
-          SizedBox(height: 10),
-          _ReviewTile(name: "Lina Alharbi", stars: 4, text: "Professional and responsive."),
-          SizedBox(height: 10),
-          _ReviewTile(name: "Lina Alharbi", stars: 4, text: "Loved the design!"),
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.child, required this.borderColor, this.background});
+
+  final Widget child;
+  final Color borderColor;
+  final Color? background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: background ?? Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
+      child: child,
     );
   }
+}
 
-  // ========= Widgets =========
+class _EditableField extends StatelessWidget {
+  const _EditableField({
+    required this.label,
+    required this.enabled,
+    required this.controller,
+    required this.purple,
+    this.maxLength,
+    this.maxLines = 1,
+    this.validator,
+    this.keyboardType,
+    this.counterText,
+    this.hintText,
+  });
 
-  Widget _experienceTile({
-    required ExperienceItem item,
-    VoidCallback? onEdit,
-    VoidCallback? onDelete,
-  }) {
+  final String label;
+  final bool enabled;
+  final TextEditingController controller;
+  final Color purple;
+
+  final int? maxLength;
+  final int maxLines;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final String? counterText;
+  final String? hintText;
+
+  @override
+  Widget build(BuildContext context) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: purple.withOpacity(0.35), width: 1.2),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          enabled: enabled,
+          validator: validator,
+          keyboardType: keyboardType,
+          maxLength: maxLength,
+          maxLines: maxLines,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          decoration: InputDecoration(
+            hintText: hintText,
+            counterText: counterText ?? "",
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.75),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: border,
+            enabledBorder: border,
+            focusedBorder: border.copyWith(borderSide: BorderSide(color: purple, width: 1.4)),
+            disabledBorder: border.copyWith(borderSide: BorderSide(color: purple.withOpacity(0.18), width: 1.2)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadOnlyBlock extends StatelessWidget {
+  const _ReadOnlyBlock({required this.title, required this.value, required this.purple});
+
+  final String title;
+  final String value;
+  final Color purple;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Text(value, style: TextStyle(color: purple, fontSize: 22, fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
+class _ExperienceCard extends StatelessWidget {
+  const _ExperienceCard({
+    required this.purple,
+    required this.experience,
+    required this.editable,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final Color purple;
+  final ExperienceModel experience;
+  final bool editable;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: kCardBorder),
+        border: Border.all(color: purple.withOpacity(0.25)),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 22,
-            backgroundColor: const Color(0xFFEFEAFB),
-            child: const Icon(Icons.school, color: kAccent),
+            radius: 20,
+            backgroundColor: const Color(0xFFF2EAFB),
+            child: Icon(Icons.school, color: purple),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(item.org, style: const TextStyle(color: kAccent, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(item.period, style: const TextStyle(color: kMuted, fontSize: 12)),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(experience.field, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(experience.org, style: TextStyle(color: purple, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(experience.period, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            ]),
           ),
-          if (isEditing) ...[
+          if (editable) ...[
             IconButton(onPressed: onEdit, icon: const Icon(Icons.edit, size: 18)),
             IconButton(onPressed: onDelete, icon: const Icon(Icons.delete, size: 18, color: Colors.red)),
           ],
@@ -644,169 +864,125 @@ class _FreelancerProfilePageState extends State<FreelancerProfilePage> {
       ),
     );
   }
+}
 
-  Widget _placeholderTile() {
+class _PlaceholderTile extends StatelessWidget {
+  const _PlaceholderTile({required this.purple});
+  final Color purple;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF4F4F4),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE6E6E6)),
       ),
-      child: const Icon(Icons.image, color: kAccent),
-    );
-  }
-
-  Widget _sectionCard({
-    required String title,
-    required Widget child,
-    Widget? trailing,
-    VoidCallback? onEdit,
-  }) {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-              const Spacer(),
-              if (trailing != null) trailing,
-              if (trailing == null && onEdit != null)
-                IconButton(onPressed: onEdit, icon: const Icon(Icons.edit, size: 18)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _optionRow({
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: const TextStyle(color: kMuted)),
-            const SizedBox(height: 6),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-          ]),
-        ),
-        if (isEditing)
-          IconButton(
-            onPressed: onTap,
-            icon: const Icon(Icons.edit, size: 18),
-          ),
-      ],
-    );
-  }
-
-  Widget _kvRow(String label, String value, {required bool editable, Widget? editor}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: kMuted)),
-        const SizedBox(height: 6),
-        if (!editable) Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-        if (editable && editor != null) editor,
-        if (editable && editor == null) Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-      ],
-    );
-  }
-
-  Widget _card({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: kCardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kCardBorder),
-      ),
-      child: child,
+      child: Icon(Icons.image, color: purple),
     );
   }
 }
 
-// ============ Models ============
-class ExperienceItem {
-  final String title;
-  final String org;
-  final String period;
+class _ActionBtn extends StatelessWidget {
+  const _ActionBtn({required this.text, required this.color, required this.onPressed});
 
-  ExperienceItem({required this.title, required this.org, required this.period});
-
-  ExperienceItem copy() => ExperienceItem(title: title, org: org, period: period);
-}
-
-class _Snapshot {
-  final String name;
-  final String title;
-  final String email;
-  final String bio;
-  final String serviceType;
-  final String workingMode;
-  final File? profileImageFile;
-  final List<File> portfolioFiles;
-  final List<ExperienceItem> experiences;
-
-  _Snapshot({
-    required this.name,
-    required this.title,
-    required this.email,
-    required this.bio,
-    required this.serviceType,
-    required this.workingMode,
-    required this.profileImageFile,
-    required this.portfolioFiles,
-    required this.experiences,
-  });
-}
-
-// ============ Review Tile ============
-class _ReviewTile extends StatelessWidget {
-  final String name;
-  final int stars;
   final String text;
+  final Color color;
+  final VoidCallback onPressed;
 
-  const _ReviewTile({required this.name, required this.stars, required this.text});
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size.fromHeight(48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.white.withOpacity(0.6),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+class _StarsReadOnly extends StatelessWidget {
+  const _StarsReadOnly({required this.value, this.size = 20});
+  final double value;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = value.round().clamp(0, 5);
+    return Row(
+      children: List.generate(5, (i) {
+        final isFilled = i < filled;
+        return Padding(
+          padding: const EdgeInsets.only(right: 2),
+          child: Icon(
+            isFilled ? Icons.star : Icons.star_border,
+            size: size,
+            color: isFilled ? Colors.amber : Colors.grey.shade400,
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _SegmentBar extends StatelessWidget {
+  const _SegmentBar({
+    required this.options,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+    required this.purple,
+  });
+
+  final List<String> options;
+  final String value;
+  final bool enabled;
+  final void Function(String v) onChanged;
+  final Color purple;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE6E6E6)),
-        borderRadius: BorderRadius.circular(12),
         color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: purple.withOpacity(0.25)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const CircleAvatar(child: Icon(Icons.person)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Row(
-                  children: List.generate(5, (i) {
-                    final filled = i < stars;
-                    return Icon(filled ? Icons.star : Icons.star_border, size: 18, color: Colors.amber);
-                  }),
+        children: options.map((o) {
+          final selected = o == value;
+          return Expanded(
+            child: InkWell(
+              onTap: enabled ? () => onChanged(o) : null,
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: selected ? purple.withOpacity(0.14) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 6),
-                Text(text),
-              ],
+                child: Center(
+                  child: Text(
+                    o,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selected ? purple : Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          )
-        ],
+          );
+        }).toList(),
       ),
     );
   }

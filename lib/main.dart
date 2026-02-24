@@ -8,6 +8,8 @@ import 'views/client_home_screen.dart';
 import 'views/admin_home.dart';
 import 'views/intro.dart';
 import 'views/password.dart';
+import 'views/client_profile.dart';
+import 'views/bank_account.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,10 +49,12 @@ class MyApp extends StatelessWidget {
         '/intro': (context) => const IntroScreen(),
         '/signup': (context) => const SignupScreen(),
         '/login': (context) => const login(),
-        '/freelancerHome': (_) => const FreelancerHomeScreen(),
+        '/freelancerHome': (_) => const FreelancerHomeView(),
         '/clientHome': (_) => const ClientHomeScreen(),
         '/adminHome': (context) => const AdminHomeScreen(),
         '/forgotPassword': (context) => const ForgotPasswordPlaceholder(),
+        '/clientProfile': (_) => ClientProfile(),
+        '/bankAccount': (_) => const BankAccountView(),
       },
     );
   }

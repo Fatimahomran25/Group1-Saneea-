@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:saneea_app/controlles/client_home_controller.dart';
+import 'package:saneea_app/views/client_profile.dart';
 import 'anouncment_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
