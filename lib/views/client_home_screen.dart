@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'anouncment_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -12,6 +14,20 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   static const primary = Color(0xFF5A3E9E);
+
+  Future<bool> _hasInternet() async {
+    final result = await Connectivity().checkConnectivity();
+    if (result == ConnectivityResult.none) return false;
+
+    try {
+      final lookup = await InternetAddress.lookup(
+        'example.com',
+      ).timeout(const Duration(seconds: 3));
+      return lookup.isNotEmpty && lookup.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _myAnnouncementsStream() {
     final user = FirebaseAuth.instance.currentUser!;
@@ -300,7 +316,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                     trailing: IconButton(
                                       icon: const Icon(Icons.delete_outline),
                                       onPressed: () async {
-                                        final ok = await showDialog<bool>(
+                                        // 🔹 تأكيد قبل الحذف
+                                        final confirm = await showDialog<bool>(
                                           context: context,
                                           builder: (_) => AlertDialog(
                                             title: const Text(
@@ -328,18 +345,75 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                           ),
                                         );
 
-                                        if (ok != true) return;
+                                        if (confirm != true) return;
 
-                                        await doc.reference.delete();
+                                        // 🔹 فحص الإنترنت
+                                        final online = await _hasInternet();
+                                        if (!online) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'No internet connection. Please try again.',
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Deleted ✅'),
-                                          ),
-                                        );
+                                        try {
+                                          await doc.reference.delete();
+
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Deleted successfully ✅',
+                                              ),
+                                            ),
+                                          );
+                                        } on FirebaseException catch (e) {
+                                          if (!context.mounted) return;
+
+                                          if (e.code == 'unavailable' ||
+                                              e.code ==
+                                                  'network-request-failed') {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'No internet connection. Please try again.',
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Something went wrong. Please try again.',
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (_) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Something went wrong. Please try again.',
+                                              ),
+                                            ),
+                                          );
+                                        }
                                       },
                                     ),
                                   ),
