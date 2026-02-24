@@ -1,9 +1,4 @@
 class LoginModel {
-  final String nationalId;
-  final String password;
-
-  LoginModel({
-    required this.nationalId,
-    required this.password,
-  }); // used only for authentication, never stored
+  String? nationalId;
+  String? password;
 }
