@@ -1,56 +1,43 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BankAccountModel {
-  final String id; // document id
-  final String iban;
-  final bool isDefault;
-  final DateTime createdAt;
+  final String? iban;        // full stored in DB
+  final String? cardLast4;   // only last 4 stored
+  final String? cardExpiry;  // MM/YY stored
+  final DateTime? updatedAt;
 
   const BankAccountModel({
-    required this.id,
     required this.iban,
-    required this.isDefault,
-    required this.createdAt,
+    required this.cardLast4,
+    required this.cardExpiry,
+    required this.updatedAt,
   });
 
-  BankAccountModel copyWith({
-    String? iban,
-    bool? isDefault,
-    DateTime? createdAt,
-  }) {
-    return BankAccountModel(
-      id: id,
-      iban: iban ?? this.iban,
-      isDefault: isDefault ?? this.isDefault,
-      createdAt: createdAt ?? this.createdAt,
-    );
+  static String cleanIban(String s) => s.replaceAll(' ', '').toUpperCase();
+
+  static String maskIban(String? iban) {
+    final s = cleanIban(iban ?? '');
+    if (s.isEmpty) return 'No bank account added';
+    final head = s.length >= 4 ? s.substring(0, 4) : s;
+    return '$head •••• •••• •••• •••• ••••';
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'iban': iban,
-      'isDefault': isDefault,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-  Map<String, dynamic> toMap() => toFirestore(); 
-  static BankAccountModel fromFirestore({
-    required String id,
-    required Map<String, dynamic> data,
-  }) {
-    final ts = data['createdAt'];
-    DateTime created;
-    if (ts is Timestamp) {
-      created = ts.toDate();
-    } else {
-      created = DateTime.now();
-    }
+  factory BankAccountModel.fromUserDoc(Map<String, dynamic>? data) {
+    final d = data ?? {};
+
+    final iban = (d['iban'] ?? '').toString().trim();
+    final cardLast4 = (d['cardLast4'] ?? '').toString().trim();
+    final cardExpiry = (d['cardExpiry'] ?? '').toString().trim();
+
+    final ts = d['bankUpdatedAt'];
+    DateTime? updatedAt;
+    if (ts is Timestamp) updatedAt = ts.toDate();
 
     return BankAccountModel(
-      id: id,
-      iban: (data['iban'] ?? '').toString(),
-      isDefault: (data['isDefault'] ?? false) as bool,
-      createdAt: created,
+      iban: iban.isEmpty ? null : iban,
+      cardLast4: cardLast4.isEmpty ? null : cardLast4,
+      cardExpiry: cardExpiry.isEmpty ? null : cardExpiry,
+      updatedAt: updatedAt,
     );
   }
 }

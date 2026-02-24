@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/bank_account_model.dart';
@@ -12,24 +13,30 @@ class BankAccountController extends ChangeNotifier {
   bool isSaving = false;
   String? error;
 
-  List<BankAccountModel> accounts = [];
+  // ✅ saved from DB
+  BankAccountModel? bank;
 
-  // form
+  // form controllers
   final ibanCtrl = TextEditingController();
+  final cardCtrl = TextEditingController();   // NOT stored fully
+  final expiryCtrl = TextEditingController(); // stored (MM/YY)
+  final cvcCtrl = TextEditingController();    // NEVER stored
 
-  // IBAN validation (SA + 24 chars total عادةً، نخليها مرنة شوي)
-  String? validateIban(String? v) {
-    final s = (v ?? '').trim().replaceAll(' ', '');
-    if (s.isEmpty) return 'IBAN is required';
-    if (!s.toUpperCase().startsWith('SA')) return 'IBAN must start with SA';
-    if (s.length != 24) return 'IBAN must be exactly 24 characters';
-    return null;
-  }
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
+      _db.collection('users').doc(uid);
 
-  CollectionReference<Map<String, dynamic>> _col(String uid) {
-    return _db.collection('users').doc(uid).collection('bank_accounts');
-  }
+  String _cleanIban(String s) => s.replaceAll(' ', '').toUpperCase();
+  String _digitsOnly(String s) => s.replaceAll(' ', '').trim();
 
+  bool get hasSavedCard => (bank?.cardLast4 ?? '').isNotEmpty;
+  bool get hasSavedIban => (bank?.iban ?? '').isNotEmpty;
+  bool get hasSavedExpiry => (bank?.cardExpiry ?? '').isNotEmpty;
+
+  String? get savedIban => bank?.iban;
+  String? get savedCardLast4 => bank?.cardLast4;
+  String? get savedExpiry => bank?.cardExpiry;
+
+  // -------------------- INIT --------------------
   Future<void> init() async {
     isLoading = true;
     error = null;
@@ -37,23 +44,20 @@ class BankAccountController extends ChangeNotifier {
 
     try {
       final user = _auth.currentUser;
-      if (user == null) {
-        error = 'Not logged in';
-        isLoading = false;
-        notifyListeners();
-        return;
-      }
+      if (user == null) throw 'Not logged in';
 
-      final snap = await _col(user.uid).orderBy('createdAt', descending: true).get();
+      final doc = await _userDoc(user.uid).get();
+      final data = doc.data();
 
-      accounts = snap.docs
-          .map((d) => BankAccountModel.fromFirestore(id: d.id, data: d.data()))
-          .toList();
+      bank = BankAccountModel.fromUserDoc(data);
 
-      // تأكد: لو ما فيه default وخانة موجودة، خله أول واحد default
-      if (accounts.isNotEmpty && !accounts.any((e) => e.isDefault)) {
-        await setDefault(accounts.first.id, silent: true);
-      }
+      // ✅ نعبّي IBAN من الداتا (مو من الفورم السابق)
+      ibanCtrl.text = bank?.iban ?? '';
+
+      // ❌ لا نعبّي البطاقة/CVC لأنها حساسة
+      cardCtrl.clear();
+      expiryCtrl.clear();
+      cvcCtrl.clear();
 
       isLoading = false;
       notifyListeners();
@@ -64,127 +68,158 @@ class BankAccountController extends ChangeNotifier {
     }
   }
 
-  Future<void> addIban() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+  // -------------------- VALIDATORS --------------------
+  String? validateIban(String? v) {
+    final s = _cleanIban((v ?? '').trim());
+    if (s.isEmpty) return 'IBAN is required';
+    if (!RegExp(r'^SA\d{22}$').hasMatch(s)) {
+      return 'IBAN must be SA + 22 digits (24 chars)';
+    }
+    return null;
+  }
 
-    final iban = ibanCtrl.text.trim().replaceAll(' ', '');
-    if (iban.isEmpty) return;
+  // ✅ إذا عندي بطاقة محفوظة: لو تركه فاضي ما نطلبه
+  String? validateCard(String? v) {
+    final s = _digitsOnly(v ?? '');
+    if (hasSavedCard && s.isEmpty) return null;
+
+    if (s.isEmpty) return 'Card number is required';
+    if (!RegExp(r'^\d{16}$').hasMatch(s)) return 'Card number must be 16 digits';
+    return null;
+  }
+
+  String? validateExpiry(String? v) {
+    final s = (v ?? '').trim();
+    if (hasSavedCard && s.isEmpty) return null;
+
+    if (s.isEmpty) return 'Expiry is required';
+    if (!RegExp(r'^(0[1-9]|1[0-2])\/\d{2}$').hasMatch(s)) return 'Use MM/YY';
+    return null;
+  }
+
+  String? validateCvc(String? v) {
+    final s = (v ?? '').trim();
+    if (hasSavedCard && s.isEmpty) return null;
+
+    if (s.isEmpty) return 'CVC is required';
+    if (!RegExp(r'^\d{3}$').hasMatch(s)) return 'CVC must be 3 digits';
+    return null;
+  }
+
+  // -------------------- SAVE --------------------
+  Future<bool> saveBankInfo() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      error = 'Not logged in';
+      notifyListeners();
+      return false;
+    }
 
     isSaving = true;
+    error = null;
     notifyListeners();
 
     try {
-      final now = DateTime.now();
-      final docRef = await _col(user.uid).add({
-        'iban': iban,
-        'isDefault': accounts.isEmpty, // أول واحد يصير default
-        'createdAt': Timestamp.fromDate(now),
-      });
+      final iban = _cleanIban(ibanCtrl.text);
 
-      final newItem = BankAccountModel(
-        id: docRef.id,
+      final cardDigits = _digitsOnly(cardCtrl.text);
+      final expiry = expiryCtrl.text.trim();
+      final cvc = cvcCtrl.text.trim();
+
+      // ✅ last4/expiry لو المستخدم دخل بطاقة جديدة
+      String last4 = bank?.cardLast4 ?? '';
+      String expiryToSave = bank?.cardExpiry ?? '';
+
+      if (cardDigits.isNotEmpty) {
+        last4 = cardDigits.substring(cardDigits.length - 4);
+        expiryToSave = expiry;
+        // ❌ cvc never stored (for validation only)
+        debugPrint("CVC received (not stored): $cvc");
+      }
+
+      await _userDoc(user.uid).set({
+        'iban': iban,
+        'cardLast4': last4,
+        'cardExpiry': expiryToSave,
+        'bankUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // ✅ update local model
+      bank = BankAccountModel(
         iban: iban,
-        isDefault: accounts.isEmpty,
-        createdAt: now,
+        cardLast4: last4.isEmpty ? null : last4,
+        cardExpiry: expiryToSave.isEmpty ? null : expiryToSave,
+        updatedAt: DateTime.now(),
       );
 
-      accounts = [newItem, ...accounts];
+      // ✅ clear sensitive fields
+      cardCtrl.clear();
+      expiryCtrl.clear();
+      cvcCtrl.clear();
+
+      isSaving = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      error = e.toString();
+      debugPrint("SAVE ERROR: $e");
+      isSaving = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // -------------------- DELETE --------------------
+  Future<bool> deleteBankInfo() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      error = 'Not logged in';
+      notifyListeners();
+      return false;
+    }
+
+    isSaving = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      await _userDoc(user.uid).update({
+        'iban': FieldValue.delete(),
+        'cardLast4': FieldValue.delete(),
+        'cardExpiry': FieldValue.delete(),
+        'bankUpdatedAt': FieldValue.delete(),
+      });
+
+      bank = const BankAccountModel(
+        iban: null,
+        cardLast4: null,
+        cardExpiry: null,
+        updatedAt: null,
+      );
+
       ibanCtrl.clear();
+      cardCtrl.clear();
+      expiryCtrl.clear();
+      cvcCtrl.clear();
 
       isSaving = false;
       notifyListeners();
+      return true;
     } catch (e) {
       error = e.toString();
+      debugPrint("DELETE ERROR: $e");
       isSaving = false;
       notifyListeners();
-    }
-  }
-
-  Future<void> updateIban({
-    required String id,
-    required String newIban,
-  }) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    final iban = newIban.trim().replaceAll(' ', '');
-    if (iban.isEmpty) return;
-
-    isSaving = true;
-    notifyListeners();
-
-    try {
-      await _col(user.uid).doc(id).update({'iban': iban});
-
-      accounts = accounts.map((a) {
-        if (a.id != id) return a;
-        return a.copyWith(iban: iban);
-      }).toList();
-
-      isSaving = false;
-      notifyListeners();
-    } catch (e) {
-      error = e.toString();
-      isSaving = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteIban(String id) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    isSaving = true;
-    notifyListeners();
-
-    try {
-      final wasDefault = accounts.firstWhere((a) => a.id == id).isDefault;
-
-      await _col(user.uid).doc(id).delete();
-      accounts = accounts.where((a) => a.id != id).toList();
-
-      // لو حذفنا default: خلي أول واحد default
-      if (wasDefault && accounts.isNotEmpty) {
-        await setDefault(accounts.first.id, silent: true);
-      }
-
-      isSaving = false;
-      notifyListeners();
-    } catch (e) {
-      error = e.toString();
-      isSaving = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> setDefault(String id, {bool silent = false}) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    try {
-      // اجعل الكل false ثم واحد true (batch)
-      final batch = _db.batch();
-
-      for (final a in accounts) {
-        final ref = _col(user.uid).doc(a.id);
-        batch.update(ref, {'isDefault': a.id == id});
-      }
-
-      await batch.commit();
-
-      accounts = accounts.map((a) => a.copyWith(isDefault: a.id == id)).toList();
-
-      if (!silent) notifyListeners();
-    } catch (e) {
-      error = e.toString();
-      if (!silent) notifyListeners();
+      return false;
     }
   }
 
   @override
   void dispose() {
     ibanCtrl.dispose();
+    cardCtrl.dispose();
+    expiryCtrl.dispose();
+    cvcCtrl.dispose();
     super.dispose();
   }
 }

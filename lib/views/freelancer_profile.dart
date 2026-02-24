@@ -20,13 +20,24 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
   static const Color kPurple = Color(0xFF4F378B);
   static const Color kSoftBg = Color(0xFFF4F1FA);
   static const Color kBorder = Color(0x66B8A9D9);
+   String _maskIban(String? iban) {
+    final s = (iban ?? '').replaceAll(' ', '').toUpperCase();
+
+    if (s.isEmpty) {
+      return "No bank account added";
+    }
+
+    final head = s.length >= 4 ? s.substring(0, 4) : s;
+
+    return '$head •••• •••• •••• •••• ••••';
+  }
 
   @override
   void initState() {
     super.initState();
     c.init();
   }
-
+ 
   @override
   void dispose() {
     c.dispose();
@@ -240,25 +251,48 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
                                         Expanded(
-                                          child: _EditableField(
-                                            label: "IBAN (optional)",
-                                            enabled: c.isEditing,
-                                            controller: c.ibanCtrl,
-                                            validator: c.validateIban,
-                                            hintText: "SA00 0000 0000 0000 0000 0000",
-                                            purple: kPurple,
-                                          ),
-                                        ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "IBAN",
+        style: TextStyle(
+          color: Colors.grey.shade700,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kPurple.withOpacity(0.35), width: 1.2),
+        ),
+        child: Text(
+          _maskIban(c.profile!.iban),
+          style: TextStyle(
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
                                         const SizedBox(width: 10),
-                                        IconButton(
-                                          tooltip: "Bank account",
-                                          onPressed: () {
-                                            // لو عندك صفحة bank_account.dart اربطيها بالراوت
-                                            Navigator.pushNamed(context, '/bankAccount');
-                                          },
-                                          icon: Icon(Icons.account_balance, color: kPurple),
-                                        ),
-                                      ],
+                                      IconButton(
+  tooltip: "Bank account",
+  onPressed: () async {
+    final changed = await Navigator.pushNamed(context, '/bankAccount');
+    if (changed == true) {
+      await c.init(); // يعيد تحميل بيانات البروفايل من فايربيس
+    }
+  },
+  icon: Icon(Icons.account_balance, color: kPurple),
+),                    ],
                                     ),
 
                                     const SizedBox(height: 14),
