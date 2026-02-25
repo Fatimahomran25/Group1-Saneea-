@@ -1,70 +1,106 @@
 import 'package:flutter/material.dart';
 import '../controlles/signup_controller.dart';
 import '../models/signup_model.dart';
+import 'package:flutter/services.dart';
 
+/// SignupScreen is the UI (View) responsible for collecting user registration data.
+/// It delegates validation/state and Firebase logic to SignupController (Controller).
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
-  
 }
 
+/// _SignupScreenState holds UI-only state:
+/// - FocusNodes (to detect focus and show live validation messages)
+/// - local selection state (selectedType)
+/// - password visibility toggles (eye icon)
 class _SignupScreenState extends State<SignupScreen> {
+  /// Controller that contains text controllers, validation getters, and createAccount().
   late final SignupController c;
+
+  /// Local UI selection for highlighting the account type buttons.
+  /// The actual chosen type is also stored inside SignupController.model via c.setAccountType().
   AccountType? selectedType;
-   final _nidFocus = FocusNode();
+
+  /// FocusNodes are used to:
+  /// - know which field is focused
+  /// - show/hide helper validation messages depending on focus
+  /// - trigger UI refresh when focus changes
+  final _nidFocus = FocusNode();
   final _firstFocus = FocusNode();
   final _lastFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _passFocus = FocusNode();
   final _confirmFocus = FocusNode();
+
+  /// Password visibility (eye icon) toggles.
+  /// true  => hidden (obscureText)
+  /// false => shown
+  bool _obscurePass = true;
+  bool _obscureConfirm = true;
+
+  /// Triggers rebuild to update:
+  /// - live validation messages
+  /// - password rules indicators
+  /// - focus-dependent UI
   void _refresh() => setState(() {});
 
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize controller once for the screen lifecycle.
+    c = SignupController();
+
+    // Rebuild UI when focus changes so helper messages update instantly.
+    _nidFocus.addListener(_refresh);
+    _firstFocus.addListener(_refresh);
+    _lastFocus.addListener(_refresh);
+    _emailFocus.addListener(_refresh);
+    _passFocus.addListener(_refresh);
+    _confirmFocus.addListener(_refresh);
+  }
 
   @override
-void initState() {
-  super.initState();
-  c = SignupController();
-  _nidFocus.addListener(_refresh);
-  _firstFocus.addListener(_refresh);
-  _lastFocus.addListener(_refresh);
-  _emailFocus.addListener(_refresh);
-  _passFocus.addListener(_refresh);
-  _confirmFocus.addListener(_refresh);
-}
+  void dispose() {
+    // Dispose FocusNodes to avoid memory leaks.
+    _nidFocus.dispose();
+    _firstFocus.dispose();
+    _lastFocus.dispose();
+    _emailFocus.dispose();
+    _passFocus.dispose();
+    _confirmFocus.dispose();
 
-@override
-void dispose() {
-   _nidFocus.dispose();
-  _firstFocus.dispose();
-  _lastFocus.dispose();
-  _emailFocus.dispose();
-  _passFocus.dispose();
-  _confirmFocus.dispose();
+    // Dispose controller text controllers.
+    c.dispose();
+    super.dispose();
+  }
 
-  c.dispose();
-  super.dispose();
-}
+  // ===== THEME / STYLING CONSTANTS =====
 
-
-  
-
-  // ألوان من تصميمك
+  /// Screen background color.
   static const _bg = Colors.white;
-  static const _fieldFill = Color(0x5CE8DEF8); 
-  static const _btnBlue = Color(0xFF467FFF);
-  static const _textBlack = Color(0xFF000000);
-    static const _primaryPurple = Color(0xFF4F378B);
 
+  /// Default fill color for input fields (semi-transparent).
+  static const _fieldFill = Color(0x5CE8DEF8);
 
+  /// Main brand color used for the primary button.
+  static const _primaryPurple = Color(0xFF4F378B);
 
-  // مقاسات من Figma
-  
+  // ===== DIMENSIONS (BASED ON FIGMA) =====
 
+  /// Height for small text fields (e.g., first/last name).
   static const double _smallBoxH = 46;
+
+  /// Border radius for input fields container.
   static const double _radiusField = 5;
+
+  /// Border radius for main button.
   static const double _radiusButton = 10;
+
+  /// Logo width/height and rounding.
   static const double _logoW = 112;
   static const double _logoH = 128;
   static const double _logoRadius = 33;
@@ -72,145 +108,160 @@ void dispose() {
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
+
+    /// When to show password rules:
+    /// - user is focused on password field
+    /// - or text exists but not strong
+    /// - or user pressed submit and password is invalid
     final showPasswordRules =
-    _passFocus.hasFocus ||
-    (c.passwordCtrl.text.isNotEmpty && !c.isPasswordStrong) ||
-    (c.submitted && !c.isPasswordStrong);
+        _passFocus.hasFocus ||
+        (c.passwordCtrl.text.isNotEmpty && !c.isPasswordStrong) ||
+        (c.submitted && !c.isPasswordStrong);
+
+    /// When to show confirm-password rule:
+    /// - user is focused on confirm field
+    /// - or text exists but doesn't match
+    /// - or user pressed submit and confirm is invalid
     final showConfirmRules =
-    _confirmFocus.hasFocus ||
-    (c.confirmPasswordCtrl.text.isNotEmpty && !c.isConfirmPasswordValid) ||
-    (c.submitted && !c.isConfirmPasswordValid);
+        _confirmFocus.hasFocus ||
+        (c.confirmPasswordCtrl.text.isNotEmpty && !c.isConfirmPasswordValid) ||
+        (c.submitted && !c.isConfirmPasswordValid);
 
+    /// Responsive form width:
+    /// - uses 88% of screen width
+    /// - clamped to stay between 280 and 420 for better UI consistency
+    final formW = (screenW * 0.88).clamp(280.0, 420.0);
 
-
-    
-    final formW = (screenW * 0.88).clamp(280.0, 420.0); // عرض الفورم
+    /// Horizontal gap between First Name and Last Name fields.
     final gap = 12.0;
-    final halfW = (formW - gap) / 2;
+
     return Scaffold(
       backgroundColor: _bg,
-      
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            // Scroll view prevents overflow on small screens / keyboard open.
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: ConstrainedBox(
+              // Keeps UI aligned and prevents being too wide on tablets.
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 14),
 
-                  // LOGO (142x142)
+                  // ===== BRAND LOGO =====
+                  // Rounded image container to match design.
                   ClipRRect(
-  borderRadius: BorderRadius.circular(_logoRadius),
-  child: Image.asset(
-    'assets/LOGO.png',
-    width: _logoW,
-    height: _logoH,
-    fit: BoxFit.contain,
-  ),
-),
+                    borderRadius: BorderRadius.circular(_logoRadius),
+                    child: Image.asset(
+                      'assets/LOGO.png',
+                      width: _logoW,
+                      height: _logoH,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
 
-const SizedBox(height: 6),
+                  const SizedBox(height: 6),
 
-ShaderMask(
-  shaderCallback: (bounds) {
-    return const LinearGradient(
-      colors: [
-        Color(0xFF4F378B),
-        Color(0xFF8F3F78),
-        Color(0xFF5A3888),
-        Color(0xFFA24272),
-      ],
-    ).createShader(bounds);
-  },
-  child: const Text(
-    'Saneea',
-    textAlign: TextAlign.center,
-    style: TextStyle(
-      fontFamily: 'DMSerifDisplay',
-      fontSize: 36,
-      fontWeight: FontWeight.w400,
-      height: 1.0,
-      letterSpacing: 0,
-      color: Colors.white, // ضروري مع ShaderMask
-    ),
-  ),
-),
-
-                  
-                 
+                  // ===== BRAND TITLE (GRADIENT TEXT) =====
+                  // ShaderMask applies a gradient over the text color (text color must be white).
+                  ShaderMask(
+                    shaderCallback: (bounds) {
+                      return const LinearGradient(
+                        colors: [
+                          Color(0xFF4F378B),
+                          Color(0xFF8F3F78),
+                          Color(0xFF5A3888),
+                          Color(0xFFA24272),
+                        ],
+                      ).createShader(bounds);
+                    },
+                    child: const Text(
+                      'Saneea',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'DMSerifDisplay',
+                        fontSize: 36,
+                        fontWeight: FontWeight.w400,
+                        height: 1.0,
+                        letterSpacing: 0,
+                        // Required because ShaderMask uses text color as a mask
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 18),
-                  
+
+                  // ===== GLOBAL FORM ERROR MESSAGES =====
+                  // Shows only after submit if any required field is invalid.
                   if (c.submitted && !c.allRequiredValid)
-  Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-      'Please complete all required fields.',
-      style: const TextStyle(
-        color: Colors.red,
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
-      textAlign: TextAlign.center,
-    ),
-  ),
-  if (c.serverError != null)
-  Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-      c.serverError!,
-      style: const TextStyle(
-        color: Colors.red,
-        fontSize: 14,
-      ),
-      textAlign: TextAlign.center,
-    ),
-  ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        'Please complete all required fields.',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
 
+                  // Shows server-side error (e.g., email already in use, duplicate nationalId).
+                  if (c.serverError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        c.serverError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
 
+                  // ===== ACCOUNT TYPE SELECTION =====
+                  // Two custom buttons: Freelancer / Client.
+                  // Red border appears if user submitted without choosing a type.
                   Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    _AccountTypeButton(
-  text: 'Freelancer',
-  icon: Icons.person_outline,
-  isSelected: selectedType == AccountType.freelancer,
-   showErrorBorder: c.submitted && !c.isAccountTypeSelected,
-  
-  onTap: () {
-    setState(() => selectedType = AccountType.freelancer);
-    c.setAccountType(AccountType.freelancer);
-  },
-),
-    const SizedBox(width: 12),
-    _AccountTypeButton(
-  text: 'Client',
-  icon: Icons.groups_outlined,
-  isSelected: selectedType == AccountType.client,
-  showErrorBorder: c.submitted && !c.isAccountTypeSelected,
-  
-  onTap: () {
-    setState(() => selectedType = AccountType.client);
-    
-    c.setAccountType(AccountType.client);
-  },
-),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _AccountTypeButton(
+                        text: 'Freelancer',
+                        icon: Icons.person_outline,
+                        isSelected: selectedType == AccountType.freelancer,
+                        showErrorBorder:
+                            c.submitted && !c.isAccountTypeSelected,
+                        onTap: () {
+                          setState(() => selectedType = AccountType.freelancer);
+                          c.setAccountType(AccountType.freelancer);
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _AccountTypeButton(
+                        text: 'Client',
+                        icon: Icons.groups_outlined,
+                        isSelected: selectedType == AccountType.client,
+                        showErrorBorder:
+                            c.submitted && !c.isAccountTypeSelected,
+                        onTap: () {
+                          setState(() => selectedType = AccountType.client);
+                          c.setAccountType(AccountType.client);
+                        },
+                      ),
+                    ],
+                  ),
 
-  ],
+                  const SizedBox(height: 24),
 
-),
-const SizedBox(height: 24),
-
-
-                  // National ID / Iqama (Group height 73)
+                  // ===== NATIONAL ID / IQAMA FIELD =====
+                  // Numeric only + max length 10 (Saudi ID/Iqama length constraint).
                   _LabeledField(
                     label: 'National ID / Iqama',
                     width: formW,
+                    maxLength: 10,
                     showError: c.submitted && !c.isNationalIdValid,
-                    hintText: '1012345678',
                     focusNode: _nidFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
@@ -218,246 +269,263 @@ const SizedBox(height: 24),
                     fillColor: _fieldFill,
                     radius: _radiusField,
                     keyboardType: TextInputType.number,
-                    liveMessage: (!_nidFocus.hasFocus &&
-        c.nationalIdCtrl.text.isNotEmpty &&
-        !c.isNationalIdValid)
-    ? 'Must be 10 digits and start with 1 (ID) or 2 (Iqama).'
-    : null,),
+                    // Live message appears when user leaves the field or on submit.
+                    liveMessage:
+                        (!_nidFocus.hasFocus &&
+                            c.nationalIdCtrl.text.isNotEmpty &&
+                            !c.isNationalIdValid)
+                        ? 'Must be 10 digits and start with 1 (ID) or 2 (Iqama).'
+                        : null,
+                  ),
 
                   const SizedBox(height: 16),
- 
-                  // First name + Last name (two boxes 160x46)
+
+                  // ===== NAME FIELDS (FIRST + LAST) =====
                   SizedBox(
-                  width: formW,
-                  child: Row(
-                  children: [
-                 _LabeledField(
-                 label: 'First name',
-                 width: halfW,
-        
-        showError: c.submitted && !c.isFirstNameValid,
-        hintText: 'Fatimah',
-        focusNode: _firstFocus,
-        onChanged: _refresh, 
-
-        boxHeight: _smallBoxH,
-        controller: c.firstNameCtrl,
-        fillColor: _fieldFill,
-        radius: _radiusField,
-        liveMessage: (!_firstFocus.hasFocus &&
-        c.firstNameCtrl.text.isNotEmpty &&
-        !c.isFirstNameValid)
-    ? 'Only letters, max 15 characters.'
-    : null, ),
-      SizedBox(width: gap),
-      _LabeledField(
-        label: 'Last name',
-        width: halfW,
-        boxHeight: _smallBoxH,
-        showError: c.submitted && !c.isLastNameValid,
-        hintText: 'Omran',
-        focusNode:_lastFocus ,
-          onChanged: _refresh, 
-        controller: c.lastNameCtrl,
-
-    
-        fillColor: _fieldFill,
-        radius: _radiusField,
-        liveMessage: (!_lastFocus.hasFocus &&
-        c.lastNameCtrl.text.isNotEmpty &&
-        !c.isLastNameValid)
-    ? 'Only letters, max 15 characters.'
-    : null,
-      ),
-    ],
-  ),
-),
-
-                  
+                    width: formW,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _LabeledField(
+                            label: 'First name',
+                            width: double.infinity,
+                            showError: c.submitted && !c.isFirstNameValid,
+                            focusNode: _firstFocus,
+                            onChanged: _refresh,
+                            boxHeight: _smallBoxH,
+                            controller: c.firstNameCtrl,
+                            fillColor: _fieldFill,
+                            radius: _radiusField,
+                            liveMessage:
+                                (!_firstFocus.hasFocus &&
+                                    c.firstNameCtrl.text.isNotEmpty &&
+                                    !c.isFirstNameValid)
+                                ? 'Only letters, max 15 characters.'
+                                : null,
+                          ),
+                        ),
+                        SizedBox(width: gap),
+                        Expanded(
+                          child: _LabeledField(
+                            label: 'Last name',
+                            width: double.infinity,
+                            boxHeight: _smallBoxH,
+                            showError: c.submitted && !c.isLastNameValid,
+                            focusNode: _lastFocus,
+                            onChanged: _refresh,
+                            controller: c.lastNameCtrl,
+                            fillColor: _fieldFill,
+                            radius: _radiusField,
+                            liveMessage:
+                                (!_lastFocus.hasFocus &&
+                                    c.lastNameCtrl.text.isNotEmpty &&
+                                    !c.isLastNameValid)
+                                ? 'Only letters, max 15 characters.'
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 16),
 
-                  // Email address
+                  // ===== EMAIL FIELD =====
+                  // Uses email keyboard + Gmail format validation in the controller.
                   _LabeledField(
                     label: 'Email address',
                     width: formW,
                     showError: c.submitted && !c.isEmailValid,
-                    hintText: 'example@gmail.com',
+                    hintText: 'e.g. example@gmail.com',
                     focusNode: _emailFocus,
-                     onChanged: _refresh,
+                    onChanged: _refresh,
                     boxHeight: 46,
                     controller: c.emailCtrl,
                     fillColor: _fieldFill,
                     radius: _radiusField,
                     keyboardType: TextInputType.emailAddress,
-                    liveMessage:  (!_emailFocus.hasFocus &&
-        c.emailCtrl.text.isNotEmpty &&
-        !c.isEmailValid)
-    ? 'Please enter a valid Gmail address (example@gmail.com).'
-    : null,
-
+                    liveMessage:
+                        (!_emailFocus.hasFocus &&
+                            c.emailCtrl.text.isNotEmpty &&
+                            !c.isEmailValid)
+                        ? 'Please enter a valid Gmail address.'
+                        : null,
                   ),
 
                   const SizedBox(height: 16),
-                
-                  // Password
-                  
-_LabeledField(
-  label: 'Password',
-  width: formW,
-  showError: c.submitted && !c.isPasswordValid,
-  hintText: 'example-25',
-  focusNode: _passFocus,
-  onChanged: _refresh,
-  boxHeight: 46,
-  controller: c.passwordCtrl,
-  fillColor: _fieldFill,
-  radius: _radiusField,
-  obscureText: true,
-),
 
-if (showPasswordRules) ...[
-  const SizedBox(height: 8),
-  Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _PasswordRule(
-        text: "At least 10 characters",
-        isValid: c.hasMinLength,
-        isActive: c.passwordCtrl.text.isNotEmpty,
-      ),
-      _PasswordRule(
-        text: "Contains a number",
-        isValid: c.hasNumber,
-        isActive: c.passwordCtrl.text.isNotEmpty,
-      ),
-      _PasswordRule(
-        text: "Contains a special character",
-        isValid: c.hasSpecialChar,
-        isActive: c.passwordCtrl.text.isNotEmpty,
-      ),
-    ],
-  ),
-],
+                  // ===== PASSWORD FIELD =====
+                  // Eye icon toggles obscureText between hidden/shown.
+                  _LabeledField(
+                    label: 'Password',
+                    width: formW,
+                    showError: c.submitted && !c.isPasswordValid,
+                    focusNode: _passFocus,
+                    onChanged: _refresh,
+                    boxHeight: 46,
+                    controller: c.passwordCtrl,
+                    fillColor: _fieldFill,
+                    radius: _radiusField,
+                    obscureText: _obscurePass,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePass ? Icons.visibility_off : Icons.visibility,
+                        color: _primaryPurple,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePass = !_obscurePass),
+                    ),
+                  ),
 
-
+                  // Password rules UI feedback (not a validation change, only visual indicators).
+                  if (showPasswordRules) ...[
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _PasswordRule(
+                          text: "Contains at least 8 letters",
+                          isValid: c.hasAtLeast8Letters,
+                          isActive: c.passwordCtrl.text.isNotEmpty,
+                        ),
+                        _PasswordRule(
+                          text: "Contains a number",
+                          isValid: c.hasNumber,
+                          isActive: c.passwordCtrl.text.isNotEmpty,
+                        ),
+                        _PasswordRule(
+                          text: "Contains a special character",
+                          isValid: c.hasSpecialChar,
+                          isActive: c.passwordCtrl.text.isNotEmpty,
+                        ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
 
-                  // Confirm password
+                  // ===== CONFIRM PASSWORD FIELD =====
+                  // Eye icon toggles obscureText between hidden/shown.
                   _LabeledField(
                     label: 'Confirm password',
                     width: formW,
                     showError: c.submitted && !c.isConfirmPasswordValid,
-                    hintText: 'example-25',
                     focusNode: _confirmFocus,
-                    onChanged: _refresh, 
-                    
+                    onChanged: _refresh,
                     boxHeight: 46,
                     controller: c.confirmPasswordCtrl,
                     fillColor: _fieldFill,
                     radius: _radiusField,
-                    obscureText: true,
-                    liveMessage: (!_confirmFocus.hasFocus &&
-          c.confirmPasswordCtrl.text.isNotEmpty &&
-          !c.isConfirmPasswordValid)
-      ? 'Passwords do not match.'
-      : null,
-                  ),if (showConfirmRules) ...[
-  const SizedBox(height: 8),
-  _PasswordRule(
-    text: "Matches password",
-    isValid: c.isConfirmPasswordValid,
-    isActive: c.confirmPasswordCtrl.text.isNotEmpty,
-  ),
-],
+                    obscureText: _obscureConfirm,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: _primaryPurple,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
+                    // Live message shown when not focused or on submit.
+                    liveMessage:
+                        (!_confirmFocus.hasFocus &&
+                            c.confirmPasswordCtrl.text.isNotEmpty &&
+                            !c.isConfirmPasswordValid)
+                        ? 'Passwords do not match.'
+                        : null,
+                  ),
+
+                  // Confirm password rule indicator.
+                  if (showConfirmRules) ...[
+                    const SizedBox(height: 8),
+                    _PasswordRule(
+                      text: "Matches password",
+                      isValid: c.isConfirmPasswordValid,
+                      isActive: c.confirmPasswordCtrl.text.isNotEmpty,
+                    ),
+                  ],
 
                   const SizedBox(height: 22),
 
-                  // Create Account button (339x52, radius 10, color #467FFF)
+                  // ===== SUBMIT BUTTON =====
+                  // Calls submit() to show validation, then createAccount() to register via Firebase.
                   SizedBox(
                     width: formW,
-
-                    height: 52,
+                    height: 46,
                     child: ElevatedButton(
                       onPressed: () async {
-  setState(() => c.submit());
+                        // Marks the form as submitted (used by validation UI).
+                        setState(c.submit);
 
-  final type = await c.createAccount();
-if (type != null) {
-  if (type == AccountType.freelancer) {
-    Navigator.pushReplacementNamed(context, '/freelancerHome');
-  } else {
-    Navigator.pushReplacementNamed(context, '/clientHome');
-  }
-}
-  setState(() {}); // عشان serverError يظهر
+                        // Attempts account creation; returns AccountType on success or null on failure.
+                        final type = await c.createAccount();
 
-  if (!mounted) return;
-  if (type == null) return; // ❌ لا تنقل إذا فشل
+                        // Rebuild UI to show serverError if any.
+                        setState(() {});
 
-  if (type == AccountType.freelancer) {
-    Navigator.pushReplacementNamed(context, '/freelancerHome');
-  } else {
-    Navigator.pushReplacementNamed(context, '/clientHome');
-  }
-},
+                        // Avoid navigation if widget is no longer in the tree.
+                        if (!mounted) return;
 
+                        // Stop if createAccount failed.
+                        if (type == null) return;
 
+                        // Navigate based on selected account type.
+                        Navigator.pushReplacementNamed(
+                          this.context,
+                          type == AccountType.freelancer
+                              ? '/freelancerHome'
+                              : '/clientHome',
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryPurple,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(_radiusButton),
                         ),
-                        elevation: 4,
-                        shadowColor: Colors.black.withOpacity(0.25),
+                        elevation: 6,
                       ),
                       child: const Text(
                         'Create Account',
                         style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white, // 
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
-                  // Have an account already? Log in (width 258 height 17 )
+                  // ===== LOGIN LINK =====
+                  // RichText + GestureDetector to make only "Log in" clickable.
                   SizedBox(
                     width: formW,
-                    child: Center(
-                      child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: _textBlack,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          const Text(
+                            "Have an account already? ",
+                            style: TextStyle(fontSize: 14, color: Colors.black),
                           ),
-                          children: [
-                            const TextSpan(text: 'Have an account already? '),
-                            WidgetSpan(
-                              child: GestureDetector(
-                                onTap: () => c.loginTap(context),
-
-                                child: const Text(
-                                  'Log in',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    color: _btnBlue,
-                                  ),
-                                ),
+                          GestureDetector(
+                            onTap: () => c.loginTap(context),
+                            child: const Text(
+                              "Log in",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF467FFF),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
                 ],
               ),
@@ -467,12 +535,14 @@ if (type != null) {
       ),
     );
   }
-
-
 }
 
+/// _LabeledField is a reusable UI component that renders:
+/// - a label
+/// - a styled TextField with optional maxLength, numeric filtering, and suffix icon
+/// - an optional liveMessage under the field (animated size)
 class _LabeledField extends StatelessWidget {
-   _LabeledField({
+  const _LabeledField({
     required this.label,
     required this.width,
     required this.boxHeight,
@@ -482,14 +552,12 @@ class _LabeledField extends StatelessWidget {
     this.keyboardType,
     required this.showError,
     this.obscureText = false,
-    
     required this.focusNode,
     this.hintText,
-this.helperText,
     this.liveMessage,
-    this.onChanged, 
-
-    
+    this.onChanged,
+    this.maxLength,
+    this.suffixIcon,
   });
 
   final String label;
@@ -502,27 +570,21 @@ this.helperText,
   final bool obscureText;
   final bool showError;
 
-  
-final FocusNode focusNode;
-final String? hintText;
-final String? helperText;
-final String? liveMessage;
-final VoidCallback? onChanged;
-
-
-
-
-
-
-
+  final FocusNode focusNode;
+  final String? hintText;
+  final String? liveMessage;
+  final VoidCallback? onChanged;
+  final int? maxLength;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-       width: width,
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Field label text.
           Text(
             label,
             style: const TextStyle(
@@ -532,61 +594,87 @@ final VoidCallback? onChanged;
             ),
           ),
           const SizedBox(height: 8),
-          
 
-SizedBox(
-  height: boxHeight,
-  child: Container(
-    decoration: BoxDecoration(
-      color: fillColor,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-  color: showError ? Colors.red : Colors.transparent,
-  width: 1.5,
-),
+          // Styled text field container (fill color, border radius, error border).
+          SizedBox(
+            height: boxHeight,
+            child: Container(
+              decoration: BoxDecoration(
+                color: fillColor,
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  // Red border on validation error, otherwise transparent.
+                  color: showError ? Colors.red : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.centerLeft,
+              child: TextField(
+                focusNode: focusNode,
+                controller: controller,
+                onChanged: (_) => onChanged?.call(),
+                keyboardType: keyboardType,
+                obscureText: obscureText,
 
-       
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    alignment: Alignment.centerLeft,
-    child: TextField(
-      focusNode: focusNode, 
-      controller: controller,
-      onChanged: (_) => onChanged?.call(),
+                // Input formatting:
+                // - digitsOnly when numeric keyboard is used
+                // - length limiting if maxLength is provided
+                inputFormatters: [
+                  if (keyboardType == TextInputType.number)
+                    FilteringTextInputFormatter.digitsOnly,
+                  if (maxLength != null)
+                    LengthLimitingTextInputFormatter(maxLength!),
+                ],
 
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      decoration:  InputDecoration(
-        hintText: hintText,
-        border: InputBorder.none, // مهم جدًا
-        isDense: true,
-      ),
-      style: const TextStyle(
-        fontSize: 16,
-        color: Colors.black,
-      ),
-    ),
-  ),
-),if (liveMessage != null) ...[
+                // Enforces max length behavior (also hides the default counter in UI).
+                maxLength: maxLength,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
 
-  const SizedBox(height: 6),
-  Text(
-    liveMessage!,
-    style: const TextStyle(
-      fontSize: 12,
-      color: Colors.grey,
-    ),
-  ),
-],
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  hintStyle: const TextStyle(
+                    color: Color(0xFFBDBDBD),
+                    fontSize: 16,
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  // Hide the default maxLength counter text.
+                  counterText: '',
+                  // Optional suffix icon (e.g., password eye icon).
+                  suffixIcon: suffixIcon,
+                ),
+                style: const TextStyle(fontSize: 16, color: Colors.black),
+              ),
+            ),
+          ),
 
-
+          // Animated helper/error text under the field.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            child: liveMessage == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      liveMessage!,
+                      style: const TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ),
+          ),
         ],
       ),
     );
   }
- 
 }
- class _AccountTypeButton extends StatelessWidget {
+
+/// _AccountTypeButton is a reusable UI component for account type selection.
+/// It shows:
+/// - icon + label
+/// - selected border color
+/// - error border color if submitted without selecting any account type
+class _AccountTypeButton extends StatelessWidget {
   const _AccountTypeButton({
     required this.text,
     required this.icon,
@@ -601,34 +689,32 @@ SizedBox(
   final VoidCallback onTap;
   final bool showErrorBorder;
 
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 136,   //  Figma
-        height: 142,  //  Figma
+        // Fixed size based on design.
+        width: 136,
+        height: 142,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(60),
           border: Border.all(
-             color: showErrorBorder
-      ? Colors.red
-      : (isSelected ? const Color(0xFF4F378B) : const Color(0xFFB8A9D9)),
-  
+            // Red if form submitted without selection, otherwise selected/unselected color.
+            color: showErrorBorder
+                ? Colors.red
+                : (isSelected
+                      ? const Color(0xFF4F378B)
+                      : const Color(0xFFB8A9D9)),
             width: 1.5,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 65,
-              color: const Color(0xFF4F378B),
-            ),
+            Icon(icon, size: 65, color: const Color(0xFF4F378B)),
             const SizedBox(height: 12),
             Text(
               text,
@@ -643,8 +729,14 @@ SizedBox(
       ),
     );
   }
+}
 
-}class _PasswordRule extends StatelessWidget {
+/// _PasswordRule is a small UI indicator row for password rules.
+/// It changes color depending on:
+/// - inactive (grey) when user didn't type
+/// - valid (green)
+/// - invalid (red)
+class _PasswordRule extends StatelessWidget {
   const _PasswordRule({
     required this.text,
     required this.isValid,
@@ -660,33 +752,22 @@ SizedBox(
     Color color;
 
     if (!isActive) {
-      color = Colors.grey; // ⚪ قبل ما يكتب
+      // Neutral state (no typing yet).
+      color = Colors.grey;
     } else {
+      // Green if rule is satisfied, else red.
       color = isValid ? Colors.green : Colors.red;
     }
-
-
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(
-            Icons.circle,
-            size:10,
-            color: color,
-          ),
+          Icon(Icons.circle, size: 10, color: color),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-            ),
-          ),
+          Text(text, style: TextStyle(fontSize: 12, color: color)),
         ],
       ),
     );
   }
 }
-

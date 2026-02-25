@@ -129,51 +129,42 @@ class _loginState extends State<login> {
                           ),
                         ),
                         const SizedBox(height: 8),
-
                         SizedBox(
                           height: _smallBoxH,
-                          child: TextFormField(
-                            controller: c.nationalIdCtrl,
-                            focusNode: _nidFocus,
-                            onChanged: (_) => setState(() {}),
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(10),
-                            ],
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: _fieldFill,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _fieldFill,
+                              borderRadius: BorderRadius.circular(_radiusField),
+                              border: Border.all(
+                                color: c.nationalIdFieldError != null
+                                    ? Colors.red
+                                    : Colors.transparent,
+                                width: 1.5,
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _radiusField,
-                                ),
-                                borderSide: BorderSide.none,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            alignment: Alignment.centerLeft,
+                            child: TextField(
+                              controller: c.nationalIdCtrl,
+                              focusNode: _nidFocus,
+                              onChanged: (_) => setState(() {}),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                counterText: '',
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _radiusField,
-                                ),
-                                borderSide: BorderSide(
-                                  color: c.nationalIdFieldError != null
-                                      ? Colors.red
-                                      : Colors.transparent,
-                                  width: 1.5,
-                                ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
                               ),
                             ),
                           ),
                         ),
-
-                        if (_nidFocus.hasFocus ||
-                            c.nationalIdCtrl.text.isNotEmpty ||
-                            c.submitted) ...[
-                          const SizedBox(height: 8),
-                        ],
                       ],
                     ),
                   ),
@@ -189,7 +180,7 @@ class _loginState extends State<login> {
                         const Text(
                           'Password',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.w400,
                             color: _textBlack,
                           ),
@@ -198,57 +189,42 @@ class _loginState extends State<login> {
 
                         SizedBox(
                           height: _smallBoxH,
-                          child: TextFormField(
-                            controller: c.passwordCtrl,
-                            focusNode: _passFocus,
-                            onChanged: (_) => setState(() {}),
-                            obscureText: c.obscurePassword,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: _fieldFill,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _fieldFill,
+                              borderRadius: BorderRadius.circular(_radiusField),
+                              border: Border.all(
+                                color: c.passwordFieldError != null
+                                    ? Colors.red
+                                    : Colors.transparent,
+                                width: 1.5,
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _radiusField,
-                                ),
-                                borderSide: BorderSide.none,
-                              ),
-
-                              suffixIcon: IconButton(
-                                onPressed: () => setState(
-                                  () => c.togglePasswordVisibility(),
-                                ),
-                                icon: Icon(
-                                  c.obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: _primaryPurple,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _radiusField,
-                                ),
-                                borderSide: BorderSide(
-                                  color: c.passwordFieldError != null
-                                      ? Colors.red
-                                      : Colors.transparent,
-                                  width: 1.5,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            alignment: Alignment.centerLeft,
+                            child: TextField(
+                              controller: c.passwordCtrl,
+                              focusNode: _passFocus,
+                              onChanged: (_) => setState(() {}),
+                              obscureText: c.obscurePassword,
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => c.togglePasswordVisibility(),
+                                  ),
+                                  icon: Icon(
+                                    c.obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: _primaryPurple,
+                                  ),
                                 ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  _radiusField,
-                                ),
-                                borderSide: BorderSide(
-                                  color: c.passwordFieldError != null
-                                      ? Colors.red
-                                      : _primaryPurple,
-                                  width: 1.5,
-                                ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
                               ),
                             ),
                           ),
@@ -303,6 +279,10 @@ class _loginState extends State<login> {
                                     if (c.nationalIdFieldError != null ||
                                         c.passwordFieldError != null)
                                       return;
+
+                                    c.model.nationalId = c.nationalIdCtrl.text
+                                        .trim();
+                                    c.model.password = c.passwordCtrl.text;
 
                                     final success = await c.login();
 
@@ -375,7 +355,7 @@ class _loginState extends State<login> {
                                     'Log in',
                                     style: TextStyle(
                                       fontSize: 20,
-                                      fontWeight: FontWeight.w400,
+                                      fontWeight: FontWeight.w500,
                                       color: Colors.white,
                                     ),
                                   ),

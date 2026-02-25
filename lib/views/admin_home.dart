@@ -7,9 +7,7 @@ class AdminHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Admin Home')),
-      body: const Center(
-        child: Text('Welcome Admin 👋'),
-      ),
+      body: const Center(child: Text('Welcome Admin 👋')),
     );
   }
 }

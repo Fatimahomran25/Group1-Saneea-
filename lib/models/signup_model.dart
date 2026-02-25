@@ -6,5 +6,4 @@ class SignupModel {
   String? firstName;
   String? lastName;
   String? email;
-
 }
