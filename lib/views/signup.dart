@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 /// SignupScreen is the UI (View) responsible for collecting user registration data.
 /// It delegates validation/state and Firebase logic to SignupController (Controller).
+/// SignupScreen is the UI (View) responsible for collecting user registration data.
+/// It delegates validation/state and Firebase logic to SignupController (Controller).
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -337,7 +339,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     label: 'Email address',
                     width: formW,
                     showError: c.submitted && !c.isEmailValid,
-                    hintText: 'e.g. name@gmail.com',
+                    hintText: 'example@gmail.com',
                     focusNode: _emailFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
@@ -355,57 +357,38 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ===== PASSWORD FIELD =====
-                  // Eye icon toggles obscureText between hidden/shown.
+                  // Password
                   _LabeledField(
                     label: 'Password',
                     width: formW,
                     showError: c.submitted && !c.isPasswordValid,
+                    hintText: 'example-25',
                     focusNode: _passFocus,
                     onChanged: _refresh,
                     boxHeight: 46,
                     controller: c.passwordCtrl,
                     fillColor: _fieldFill,
                     radius: _radiusField,
-                    obscureText: _obscurePass,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePass ? Icons.visibility_off : Icons.visibility,
-                        color: _primaryPurple,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePass = !_obscurePass),
-                    ),
+                    obscureText: true,
                   ),
 
-                  // Password rules UI feedback (not a validation change, only visual indicators).
                   if (showPasswordRules) ...[
                     const SizedBox(height: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _PasswordRule(
-                          text: "At least 8 characters",
-                          isValid: c.hasAtLeast8Letters,
+                          text: "At least 10 characters",
+                          isValid: c.hasMinLength,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
                         _PasswordRule(
-                          text: "At least one uppercase character",
-                          isValid: c.hasUppercase,
-                          isActive: c.passwordCtrl.text.isNotEmpty,
-                        ),
-                        _PasswordRule(
-                          text: "At least one lowercase character",
-                          isValid: c.hasLowercase,
-                          isActive: c.passwordCtrl.text.isNotEmpty,
-                        ),
-                        _PasswordRule(
-                          text: "At least one numeric character",
+                          text: "Contains a number",
                           isValid: c.hasNumber,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
                         _PasswordRule(
-                          text: "At least one special character",
+                          text: "Contains a special character",
                           isValid: c.hasSpecialChar,
                           isActive: c.passwordCtrl.text.isNotEmpty,
                         ),
@@ -465,59 +448,57 @@ class _SignupScreenState extends State<SignupScreen> {
                     width: formW,
                     height: 46,
                     child: ElevatedButton(
-                      onPressed: c.isLoading
-                          ? null
-                          : () async {
-                              // Marks the form as submitted (used by validation UI).
-                              setState(c.submit);
-                              
+                      onPressed: () async {
+                        setState(() => c.submit());
 
-                              // Attempts account creation; returns AccountType on success or null on failure.
-                              final type = await c.createAccount();
+                        final type = await c.createAccount();
+                        if (type != null) {
+                          if (type == AccountType.freelancer) {
+                            Navigator.pushReplacementNamed(
+                              context,
+                              '/freelancerHome',
+                            );
+                          } else {
+                            Navigator.pushReplacementNamed(
+                              context,
+                              '/clientHome',
+                            );
+                          }
+                        }
+                        setState(() {}); // عشان serverError يظهر
 
-                              // Rebuild UI to show serverError if any.
-                              setState(() {});
+                        if (!mounted) return;
+                        if (type == null) return; // ❌ لا تنقل إذا فشل
 
-                              // Avoid navigation if widget is no longer in the tree.
-                              if (!context.mounted) return;
-                              
+                        if (type == AccountType.freelancer) {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/freelancerHome',
+                          );
+                        } else {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/clientHome',
+                          );
+                        }
+                      },
 
-                              // Stop if createAccount failed.
-                              if (type == null) return;
-                              
-
-                              // Navigate based on selected account type.
-                              Navigator.pushReplacementNamed(
-                                context,
-                                type == AccountType.freelancer
-                                    ? '/freelancerHome'
-                                    : '/clientHome',
-                              );
-                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryPurple,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(_radiusButton),
                         ),
-                        elevation: 6,
+                        elevation: 4,
+                        shadowColor: Colors.black.withOpacity(0.25),
                       ),
-                      child: c.isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Create Account',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                            ),
+                      child: const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white, //
+                        ),
+                      ),
                     ),
                   ),
 

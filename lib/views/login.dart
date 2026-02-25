@@ -165,8 +165,6 @@ class _loginState extends State<login> {
                             ),
                           ),
                         ),
-
-                       
                       ],
                     ),
                   ),
@@ -281,6 +279,10 @@ class _loginState extends State<login> {
                                     if (c.nationalIdFieldError != null ||
                                         c.passwordFieldError != null)
                                       return;
+
+                                    c.model.nationalId = c.nationalIdCtrl.text
+                                        .trim();
+                                    c.model.password = c.passwordCtrl.text;
 
                                     final success = await c.login();
 

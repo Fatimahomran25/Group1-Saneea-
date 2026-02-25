@@ -9,6 +9,11 @@ import 'dart:async';
 /// - Provides validation getters used by the UI
 /// - Stores lightweight UI state (submitted, serverError)
 /// - Handles account creation using FirebaseAuth + Firestore
+/// SignupController acts as the "Controller" for the SignupScreen:
+/// - Holds TextEditingControllers for all input fields
+/// - Provides validation getters used by the UI
+/// - Stores lightweight UI state (submitted, serverError)
+/// - Handles account creation using FirebaseAuth + Firestore
 class SignupController {
   /// Data model that stores non-text state like the selected AccountType.
   final SignupModel model = SignupModel();
@@ -91,25 +96,8 @@ class SignupController {
   /// Password rule #2: contains at least one digit.
   bool get hasNumber => RegExp(r'\d').hasMatch(passwordCtrl.text);
 
-  /// Password rule: contains at least one uppercase letter (A-Z).
-  bool get hasUppercase => RegExp(r'[A-Z]').hasMatch(passwordCtrl.text);
-
-  /// Password rule: contains at least one lowercase letter (a-z).
-  bool get hasLowercase => RegExp(r'[a-z]').hasMatch(passwordCtrl.text);
-
-  /// Password rule #0: contains at least 8 letters (A-Z / a-z).
-  /// Password rule: at least 8 letters AND includes uppercase + lowercase.
-  /// Password rule #0: contains at least 8 letters (A-Z / a-z).
-  bool get hasAtLeast8Letters =>
-      RegExp(r'[A-Za-z]').allMatches(passwordCtrl.text).length >= 8;
-
-  /// Overall password validity (3 rules فقط)
-  bool get isPasswordValid =>
-      hasAtLeast8Letters && hasUppercase && hasLowercase;
-
-  /// Same logic but named "Strong" for UI display purposes.
-  bool get isPasswordStrong =>
-      hasAtLeast8Letters && hasUppercase && hasLowercase;
+  bool get isPasswordValid => hasMinLength && hasNumber && hasSpecialChar;
+  bool get isPasswordStrong => hasMinLength && hasNumber && hasSpecialChar;
 
   /// Confirm password must be non-empty and match the original password.
   bool get isConfirmPasswordValid =>
@@ -161,27 +149,22 @@ class SignupController {
   /// - AccountType on success (so the UI can navigate to the correct home page)
   /// - null on failure (and sets serverError for the UI)
   Future<AccountType?> createAccount() async {
-    if (isLoading) return null;
-
-    isLoading = true;
     serverError = null;
+    if (!allRequiredValid) return null;
+
+    final nationalId = nationalIdCtrl.text.trim();
+    final firstName = firstNameCtrl.text.trim();
+    final lastName = lastNameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final password = passwordCtrl.text;
+    final accountType = model.accountType!;
 
     try {
-      if (!allRequiredValid) return null;
-
-      final nationalId = nationalIdCtrl.text.trim();
-      final firstName = firstNameCtrl.text.trim();
-      final lastName = lastNameCtrl.text.trim();
-      final email = emailCtrl.text.trim();
-      final password = passwordCtrl.text;
-      final accountType = model.accountType!;
-
       final existing = await FirebaseFirestore.instance
           .collection('users')
           .where('nationalId', isEqualTo: nationalId)
           .limit(1)
-          .get()
-          .timeout(const Duration(seconds: 8));
+          .get();
 
       if (existing.docs.isNotEmpty) {
         serverError = "National ID / Iqama already exists.";
@@ -189,49 +172,36 @@ class SignupController {
       }
 
       final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password)
-          .timeout(const Duration(seconds: 8));
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       final uid = credential.user!.uid;
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .set({
-            'accountType': accountType.name,
-            'nationalId': nationalId,
-            'firstName': firstName,
-            'lastName': lastName,
-            'email': email,
-            'createdAt': FieldValue.serverTimestamp(),
-          })
-          .timeout(const Duration(seconds: 8));
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'accountType': accountType.name,
+        'nationalId': nationalId,
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-      return accountType;
+      return accountType; // ✅ هذا الجديد
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'network-request-failed') {
-        serverError = "No internet connection.";
-      } else if (e.code == 'email-already-in-use') {
-        serverError = "Email already exists. Try a different email.";
-      } else {
-        serverError = e.message ?? "Auth error.";
-      }
-      return null;
-    } on FirebaseException catch (e) {
-      if (e.code == 'unavailable' || e.code == 'deadline-exceeded') {
-        serverError = "No internet connection. Please try again.";
-      } else {
-        serverError = "Database error. Try again.";
-      }
-      return null;
-    } on TimeoutException {
-      serverError = "Connection timed out. Check your internet.";
+      serverError = e.code == 'email-already-in-use'
+          ? "Email already exists. Try a different email."
+          : (e.message ?? "Auth error.");
       return null;
     } catch (_) {
       serverError = "Something went wrong. Try again.";
       return null;
-    } finally {
-      isLoading = false;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        serverError = "Email already exists. Try a different email.";
+      } else {
+        serverError = e.message ?? "Auth error.";
+      }
+    } catch (_) {
+      serverError = "Something went wrong. Try again.";
     }
   }
 
