@@ -12,6 +12,8 @@ import 'views/client_home_screen.dart';
 import 'views/admin_home.dart';
 import 'views/password.dart'; // <-- ForgotPasswordScreen + ResetPasswordScreen
 
+import 'views/admin_profile.dart';
+
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -83,6 +85,7 @@ class _MyAppState extends State<MyApp> {
         '/freelancerHome': (_) => const FreelancerHomeView(),
         '/clientHome': (_) => const ClientHomeScreen(),
         '/adminHome': (context) => const AdminHomeScreen(),
+        '/adminProfile': (_) => const AdminProfileScreen(),
         '/forgotPassword': (context) => const ForgotPasswordScreen(),
       },
     );
