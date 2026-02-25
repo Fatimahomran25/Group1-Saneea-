@@ -1,4 +1,3 @@
-
 class ClientProfileModel {
   final String uid;
 
@@ -61,7 +60,9 @@ class ClientProfileModel {
   }) {
     final firstName = (data['firstName'] ?? '').toString().trim();
     final lastName = (data['lastName'] ?? '').toString().trim();
-    final composedName = (data['name'] ?? '$firstName $lastName').toString().trim();
+    final composedName = (data['name'] ?? '$firstName $lastName')
+        .toString()
+        .trim();
 
     return ClientProfileModel(
       uid: uid,

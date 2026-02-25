@@ -87,7 +87,9 @@ class ClientProfileController extends ChangeNotifier {
         .limit(50)
         .get();
 
-    return snap.docs.map((d) => ClientReviewModel.fromFirestore(d.data())).toList();
+    return snap.docs
+        .map((d) => ClientReviewModel.fromFirestore(d.data()))
+        .toList();
   }
 
   double _avgRating(List<ClientReviewModel> list) {
@@ -127,7 +129,8 @@ class ClientProfileController extends ChangeNotifier {
   String? validateGmail(String? v) {
     final value = (v ?? '').trim();
     if (value.isEmpty) return "Email is required";
-    if (!gmailReg.hasMatch(value)) return "Enter a valid gmail (name@gmail.com)";
+    if (!gmailReg.hasMatch(value))
+      return "Enter a valid gmail (name@gmail.com)";
     return null;
   }
 
@@ -137,18 +140,20 @@ class ClientProfileController extends ChangeNotifier {
     return null;
   }
 
-String? validateIbanNullable(String? v) {
-  final s = (v ?? '').trim();
-  if (s.isEmpty) return null; // optional
+  String? validateIbanNullable(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return null; // optional
 
-  // يشيل المسافات
-  final clean = s.replaceAll(' ', '');
+    // يشيل المسافات
+    final clean = s.replaceAll(' ', '');
 
-  // ✅ Saudi IBAN: يبدأ SA وبعدها 22 رقم (المجموع 24)
-  final reg = RegExp(r'^SA\d{22}$');
-  if (!reg.hasMatch(clean)) return 'IBAN غير صحيح. مثال: SA00 0000 0000 0000 0000 0000';
-  return null;
-}
+    // ✅ Saudi IBAN: يبدأ SA وبعدها 22 رقم (المجموع 24)
+    final reg = RegExp(r'^SA\d{22}$');
+    if (!reg.hasMatch(clean))
+      return 'IBAN غير صحيح. مثال: SA00 0000 0000 0000 0000 0000';
+    return null;
+  }
+
   // image
   void setPickedImage(File file) {
     if (!isEditing) return;
@@ -176,18 +181,23 @@ String? validateIbanNullable(String? v) {
       if (user == null) throw "Not logged in";
 
       final newName = nameCtrl.text.trim();
-      final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      final parts = newName
+          .split(RegExp(r'\s+'))
+          .where((e) => e.isNotEmpty)
+          .toList();
       final firstName = parts.isNotEmpty ? parts.first : '';
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       final newEmail = emailCtrl.text.trim();
-      final safeBio = bioCtrl.text.length > bioMax ? bioCtrl.text.substring(0, bioMax) : bioCtrl.text;
+      final safeBio = bioCtrl.text.length > bioMax
+          ? bioCtrl.text.substring(0, bioMax)
+          : bioCtrl.text;
 
       final photoUrl = await _uploadProfileImage(user.uid);
 
       await _db.collection('users').doc(user.uid).set({
         'accountType': 'client',
         'name': newName,
-        'firstName': firstName,  
+        'firstName': firstName,
         'lastName': lastName,
         'email': newEmail,
         'bio': safeBio,
@@ -243,9 +253,9 @@ String? validateIbanNullable(String? v) {
       Navigator.pushNamedAndRemoveUntil(context, '/signup', (_) => false);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
     }
   }
 
