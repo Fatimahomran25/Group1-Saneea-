@@ -11,6 +11,8 @@ class AdminProfileScreen extends StatefulWidget {
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
   static const _primaryPurple = Color.fromRGBO(79, 55, 139, 1);
+  static const _headerBg = Color(0xFFF2EAFB);
+  static const _softBorder = Color(0x66B8A9D9);
 
   final c = AdminController();
 
@@ -18,302 +20,227 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => c.back(context),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(
+                Icons.logout,
+                color: Colors.red,
+                size: 28,
+              ),
+              onPressed: () => c.logout(context),
+            ),
+          ),
+        ],
+      ),
+
       body: FutureBuilder<AdminModel>(
         future: c.getAdminFromFirebase(),
         builder: (context, snapshot) {
-
-          // ✅ Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // ✅ Error
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                "Failed to load admin data.",
-                style: TextStyle(color: Colors.red.shade400),
-              ),
-            );
-          }
-
-          // ✅ Data (or fallback if null for any reason)
           final AdminModel admin = snapshot.data ?? c.getAdmin();
 
-          return Stack(
+          return Column(
             children: [
 
-              // 🔵 الدائرة البنفسجية الكبيرة + الدائرتين داخلها
-              Positioned(
-                top: -140,
-                right: -140,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
+              const SizedBox(height: 10),
 
-                    // الخلفية البنفسجية
-                    Container(
-                      width: 380,
-                      height: 380,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE7DDF8),
-                        shape: BoxShape.circle,
-                      ),
+              /// ✅ Header Box (سادة + إطار خفيف)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  height: 210,
+                  decoration: BoxDecoration(
+                    color: _headerBg,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _primaryPurple.withOpacity(0.22),
+                      width: 1.2,
                     ),
-
-                    // الدائرة الأولى
-                    Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _primaryPurple.withOpacity(0.35),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-
-                    // الدائرة الثانية
-                    Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _primaryPurple.withOpacity(0.25),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SafeArea(
-                child: Column(
-                  children: [
-
-                    // 🔙 زر الرجوع
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black),
-                        onPressed: () => c.back(context),
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    // 👤 صورة البروفايل + زر (+)
-                    SizedBox(
-                      width: 120,
-                      height: 120,
-                      child: Stack(
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-
-                          // الدائرة الرئيسية (Firebase photoUrl أو asset)
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: _primaryPurple,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: ClipOval(
-                              child: admin.photoUrl != null
-                                  ? Image.network(
-                                      admin.photoUrl!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.asset(
-                                      admin.photoAssetPath,
-                                      fit: BoxFit.cover,
+                          SizedBox(
+                            width: 110,
+                            height: 110,
+                            child: Stack(
+                              children: [
+                                Center(
+                                  child: CircleAvatar(
+                                    radius: 44,
+                                    backgroundColor: Colors.white,
+                                    child: CircleAvatar(
+                                      radius: 41,
+                                      backgroundColor: _headerBg,
+                                      backgroundImage:
+                                          (admin.photoUrl != null &&
+                                                  admin.photoUrl!.isNotEmpty)
+                                              ? NetworkImage(admin.photoUrl!)
+                                              : AssetImage(admin.photoAssetPath)
+                                                  as ImageProvider,
                                     ),
-                            ),
-                          ),
-
-                          // زر (+) أسفل يمين الصورة
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: () async {
-                                await c.pickAndUploadAdminPhoto(context);
-                                setState(() {}); // ✅ يحدث الصورة بعد الرفع
-                              },
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _primaryPurple,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 20,
+                                Positioned(
+                                  right: 10,
+                                  bottom: 8,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      await c.pickAndUploadAdminPhoto(context);
+                                      setState(() {});
+                                    },
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: _primaryPurple,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white, width: 2),
+                                      ),
+                                      child: const Icon(
+                                        Icons.add,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            admin.name,
+                            style: const TextStyle(
+                              color: _primaryPurple,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            admin.role,
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 14),
-
-                    Text(
-                      admin.name,
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryPurple,
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Text(
-                      admin.role,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // 🟣 الكارد الكبير
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.symmetric(horizontal: 18),
-                        padding: const EdgeInsets.fromLTRB(22, 26, 22, 18),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF4F1FA),
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              blurRadius: 14,
-                              color: Colors.black.withOpacity(0.10),
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-
-                            const Text(
-                              "National ID / Iqama",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            Text(
-                              admin.nationalId,
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
-                                color: _primaryPurple,
-                              ),
-                            ),
-
-                            const SizedBox(height: 22),
-
-                            const Text(
-                              "Email Address",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            Text(
-                              admin.email,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600,
-                                color: _primaryPurple,
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            // 🔘 Reset password
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  side: const BorderSide(
-                                    color: Color(0xFFB8A9D9),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                onPressed: () => c.resetPassword(context),
-                                child: const Text(
-                                  "Reset password",
-                                  style: TextStyle(
-                                    color: Color(0xFF2F7BFF),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // 🔘 Log out
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  side: const BorderSide(
-                                    color: Color(0xFFB8A9D9),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                onPressed: () => c.logout(context),
-                                child: const Text(
-                                  "Log out",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-                  ],
+                  ),
                 ),
               ),
+
+              const SizedBox(height: 14),
+
+              /// ✅ الكارد الطويل الممتد
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4F1FA),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: _softBorder, width: 1.2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        Text(
+                          "National ID / Iqama",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          admin.nationalId,
+                          style: const TextStyle(
+                            color: _primaryPurple,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        Text(
+                          "Email Address",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          admin.email,
+                          style: const TextStyle(
+                            color: _primaryPurple,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        /// زر Reset بأسفل الكارد
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: BorderSide(
+                                color: _primaryPurple.withOpacity(0.25),
+                                width: 1.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () => c.resetPassword(context),
+                            child: const Text(
+                              "Reset password",
+                              style: TextStyle(
+                                color: Color(0xFF2F7BFF),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
             ],
           );
         },

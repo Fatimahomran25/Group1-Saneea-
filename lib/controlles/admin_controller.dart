@@ -7,21 +7,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/admin_model.dart';
-import '../models/admin_home_item_model.dart';
 
 class AdminController {
-  // ✅ Home list (Dummy حالياً)
-  final List<AdminHomeItemModel> items = const [
-    AdminHomeItemModel(number: 1, name: "Lana Alyousef"),
-    AdminHomeItemModel(number: 2, name: "Nourah Almajed"),
-    AdminHomeItemModel(number: 3, name: "Bader Alotaiby"),
-    AdminHomeItemModel(number: 1, name: "Maha Abohaimed"),
-    AdminHomeItemModel(number: 5, name: "Meshal Alharby"),
-    AdminHomeItemModel(number: 7, name: "Abdullah Abdulrahman"),
-    AdminHomeItemModel(number: 10, name: "Mohammad Waleed"),
-    AdminHomeItemModel(number: 1, name: "Lamya Alsayari"),
-  ];
-
   // ✅ Fallback (لو ما رجع شيء من Firebase)
   AdminModel getAdmin() {
     return const AdminModel(
@@ -30,7 +17,7 @@ class AdminController {
       nationalId: "----------",
       email: "----------",
       photoAssetPath: "assets/admin.png",
-      photoUrl: null, // ✅ جديد
+      photoUrl: null,
     );
   }
 
@@ -41,10 +28,8 @@ class AdminController {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return getAdmin();
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
     final data = doc.data();
     if (data == null) return getAdmin();
@@ -54,8 +39,6 @@ class AdminController {
     final email = (data['email'] ?? '').toString().trim();
     final nationalId = (data['nationalId'] ?? '').toString().trim();
     final role = (data['accountType'] ?? 'Admin').toString().trim();
-
-    // ✅ هذا هو رابط الصورة من Firestore
     final photoUrl = (data['photoUrl'] ?? '').toString().trim();
 
     final fullName =
@@ -67,11 +50,7 @@ class AdminController {
       role: role.isEmpty ? "Admin" : role,
       nationalId: nationalId.isEmpty ? getAdmin().nationalId : nationalId,
       email: email.isEmpty ? getAdmin().email : email,
-
-      // ✅ إذا ما فيه رابط نخليها null ونستخدم asset في الواجهة
       photoUrl: photoUrl.isEmpty ? null : photoUrl,
-
-      // ✅ احتياطي: إذا ما فيه photoUrl نعرض asset
       photoAssetPath: getAdmin().photoAssetPath,
     );
   }
@@ -79,6 +58,21 @@ class AdminController {
   Future<String> getAdminFullName() async {
     final admin = await getAdminFromFirebase();
     return admin.name.isEmpty ? "Admin" : admin.name;
+  }
+
+  // ✅ First name فقط للترحيب في الهوم
+  Future<String> getAdminFirstName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return "Admin";
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+    final data = doc.data();
+    if (data == null) return "Admin";
+
+    final first = (data['firstName'] ?? '').toString().trim();
+    return first.isEmpty ? "Admin" : first;
   }
 
   // ==========================
@@ -99,14 +93,12 @@ class AdminController {
 
       final file = File(picked.path);
 
-      // Storage path: profile_photos/{uid}.jpg
       final ref = FirebaseStorage.instance
           .ref()
           .child('profile_photos')
           .child('${user.uid}.jpg');
 
       await ref.putFile(file);
-
       final url = await ref.getDownloadURL();
 
       await FirebaseFirestore.instance
@@ -138,28 +130,59 @@ class AdminController {
   // ==========================
   // Actions
   // ==========================
-  void deleteItem(BuildContext context, AdminHomeItemModel item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Delete: ${item.name} (${item.number})")),
-    );
-  }
 
+  /// ✅ Reset Password (Admin)
+  /// - يجيب الإيميل من Firestore (users/{uid}.email)
+  /// - يرسل رابط الريسيت ويودّي المستخدم لصفحة reset.html في Hosting
   Future<void> resetPassword(BuildContext context) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      final email = user?.email;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You are not logged in.")),
+        );
+        return;
+      }
 
-      if (email == null || email.trim().isEmpty) {
+      // ✅ خذي الايميل من Firestore (الأضمن معكم)
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final data = doc.data();
+      final email = (data?['email'] ?? '').toString().trim();
+
+      if (email.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("No email found for this account.")),
         );
         return;
       }
 
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: ActionCodeSettings(
+          // ✅ رابط صفحة الويب اللي سويتيها (Firebase Hosting)
+          url: 'https://freelance-app-be58f.web.app/reset.html',
+          // نخليه يفتح بالمتصفح (صفحة الويب)
+          handleCodeInApp: false,
+
+          // Android (اختياري لكنه ما يضر)
+          androidPackageName: 'com.example.saneea_app',
+          androidInstallApp: true,
+          androidMinimumVersion: '21',
+        ),
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password reset email sent.")),
+        const SnackBar(content: Text("Reset link sent ✅ Check your email")),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? "Failed to send reset email."),
+        ),
       );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
