@@ -28,8 +28,10 @@ class AdminController {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return getAdmin();
 
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
     final data = doc.data();
     if (data == null) return getAdmin();
@@ -41,8 +43,10 @@ class AdminController {
     final role = (data['accountType'] ?? 'Admin').toString().trim();
     final photoUrl = (data['photoUrl'] ?? '').toString().trim();
 
-    final fullName =
-        ([first, last]..removeWhere((e) => e.isEmpty)).join(' ').trim();
+    final fullName = ([
+      first,
+      last,
+    ]..removeWhere((e) => e.isEmpty)).join(' ').trim();
     final safeName = fullName.isEmpty ? "Admin" : fullName;
 
     return AdminModel(
@@ -65,8 +69,10 @@ class AdminController {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return "Admin";
 
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
     final data = doc.data();
     if (data == null) return "Admin";
@@ -101,18 +107,17 @@ class AdminController {
       await ref.putFile(file);
       final url = await ref.getDownloadURL();
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({'photoUrl': url});
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'photoUrl': url},
+      );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile photo updated ✅")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile photo updated ✅")));
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update photo ❌")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to update photo ❌")));
     }
   }
 
@@ -138,9 +143,9 @@ class AdminController {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You are not logged in.")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("You are not logged in.")));
         return;
       }
 
@@ -180,9 +185,7 @@ class AdminController {
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message ?? "Failed to send reset email."),
-        ),
+        SnackBar(content: Text(e.message ?? "Failed to send reset email.")),
       );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(

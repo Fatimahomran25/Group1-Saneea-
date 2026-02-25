@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:saneea_app/views/client_profile.dart';
 import 'firebase_options.dart';
-
+import 'views/freelancer_profile.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
-
+import 'views/bank_account.dart';
 import 'views/intro.dart';
 import 'views/signup.dart';
 import 'views/login.dart';
@@ -87,6 +88,8 @@ class _MyAppState extends State<MyApp> {
         '/adminHome': (context) => const AdminHomeScreen(),
         '/adminProfile': (_) => const AdminProfileScreen(),
         '/forgotPassword': (context) => const ForgotPasswordScreen(),
+        '/freelancerProfile': (_) => const FreelancerProfileView(),
+        '/clientProfile': (_) => ClientProfile(),
       },
     );
   }
