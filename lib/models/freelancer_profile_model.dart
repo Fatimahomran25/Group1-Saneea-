@@ -10,7 +10,7 @@ class FreelancerProfileModel {
   final String? photoUrl;
 
   final String? serviceType;
- final String? workingMode; 
+  final String? workingMode;
 
   final String? iban;
 
@@ -34,35 +34,35 @@ class FreelancerProfileModel {
   });
 
   FreelancerProfileModel copyWith({
-  String? name,
-  String? title,
-  String? email,
-  String? bio,
-  String? photoUrl,
-  String? serviceType,
-  bool clearServiceType = false,
-  String? workingMode,
-  bool clearWorkingMode = false,
-  String? iban,
-  List<ExperienceModel>? experiences,
-  List<String>? portfolioUrls,
-}) {
-  return FreelancerProfileModel(
-    uid: uid,
-    nationalId: nationalId,
-    rating: rating,
-    name: name ?? this.name,
-    title: title ?? this.title,
-    email: email ?? this.email,
-    bio: bio ?? this.bio,
-    photoUrl: photoUrl ?? this.photoUrl,
-    serviceType: clearServiceType ? null : (serviceType ?? this.serviceType),
-    workingMode: clearWorkingMode ? null : (workingMode ?? this.workingMode),
-    iban: iban ?? this.iban,
-    experiences: experiences ?? this.experiences,
-    portfolioUrls: portfolioUrls ?? this.portfolioUrls,
-  );
-}
+    String? name,
+    String? title,
+    String? email,
+    String? bio,
+    String? photoUrl,
+    String? serviceType,
+    bool clearServiceType = false,
+    String? workingMode,
+    bool clearWorkingMode = false,
+    String? iban,
+    List<ExperienceModel>? experiences,
+    List<String>? portfolioUrls,
+  }) {
+    return FreelancerProfileModel(
+      uid: uid,
+      nationalId: nationalId,
+      rating: rating,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      email: email ?? this.email,
+      bio: bio ?? this.bio,
+      photoUrl: photoUrl ?? this.photoUrl,
+      serviceType: clearServiceType ? null : (serviceType ?? this.serviceType),
+      workingMode: clearWorkingMode ? null : (workingMode ?? this.workingMode),
+      iban: iban ?? this.iban,
+      experiences: experiences ?? this.experiences,
+      portfolioUrls: portfolioUrls ?? this.portfolioUrls,
+    );
+  }
 
   factory FreelancerProfileModel.fromFirestore({
     required String uid,
@@ -72,8 +72,8 @@ class FreelancerProfileModel {
     data ??= {};
     final portRaw = data['portfolioUrls'];
     final ports = (portRaw is List)
-    ? portRaw.map((e) => e.toString()).toList()
-    : <String>[];  
+        ? portRaw.map((e) => e.toString()).toList()
+        : <String>[];
     return FreelancerProfileModel(
       uid: uid,
       nationalId: data['nationalId'] ?? '',
@@ -104,11 +104,7 @@ class ExperienceModel {
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'field': field,
-      'org': org,
-      'period': period,
-    };
+    return {'field': field, 'org': org, 'period': period};
   }
 
   factory ExperienceModel.fromMap(Map<String, dynamic> map) {

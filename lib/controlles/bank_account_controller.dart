@@ -18,9 +18,9 @@ class BankAccountController extends ChangeNotifier {
 
   // form controllers
   final ibanCtrl = TextEditingController();
-  final cardCtrl = TextEditingController();   // NOT stored fully
+  final cardCtrl = TextEditingController(); // NOT stored fully
   final expiryCtrl = TextEditingController(); // stored (MM/YY)
-  final cvcCtrl = TextEditingController();    // NEVER stored
+  final cvcCtrl = TextEditingController(); // NEVER stored
 
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
       _db.collection('users').doc(uid);
@@ -84,7 +84,8 @@ class BankAccountController extends ChangeNotifier {
     if (hasSavedCard && s.isEmpty) return null;
 
     if (s.isEmpty) return 'Card number is required';
-    if (!RegExp(r'^\d{16}$').hasMatch(s)) return 'Card number must be 16 digits';
+    if (!RegExp(r'^\d{16}$').hasMatch(s))
+      return 'Card number must be 16 digits';
     return null;
   }
 

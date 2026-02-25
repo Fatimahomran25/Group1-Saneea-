@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BankAccountModel {
-  final String? iban;        // full stored in DB
-  final String? cardLast4;   // only last 4 stored
-  final String? cardExpiry;  // MM/YY stored
+  final String? iban; // full stored in DB
+  final String? cardLast4; // only last 4 stored
+  final String? cardExpiry; // MM/YY stored
   final DateTime? updatedAt;
 
   const BankAccountModel({
