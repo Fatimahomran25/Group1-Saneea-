@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Reset Password</title>
+
+<style>
+  :root{
+    --bg: #ffffff;
+    --fieldFill: rgba(232, 222, 248, 0.36);
+    --primary: #4F378B;
+    --hint: #666;
+    --borderError: #ff3b30;
+    --text: #000;
+    --grey: #9e9e9e;
+    --green: #1b8f3a;
+    --red: #c62828;
+    --radiusField: 5px;
+    --radiusButton: 10px;
+  }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    font-family: Arial, sans-serif;
+    color: var(--text);
+  }
+
+  .wrap{
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 60px 20px 28px;
+  }
+
+  h2{
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 500;
+    text-align:center;
+  }
+
+  .hint{
+    color: var(--hint);
+    font-size: 13px;
+    text-align:center;
+    margin-bottom: 24px;
+  }
+
+  .field{
+    margin-bottom: 16px;
+  }
+
+  .label{
+    font-size:16px;
+    margin: 0 0 8px;
+  }
+
+  .inputShell{
+    height: 46px;
+    display:flex;
+    align-items:center;
+    background: var(--fieldFill);
+    border-radius: var(--radiusField);
+    border: 1.5px solid transparent;
+    padding: 0 8px 0 12px;
+    box-sizing: border-box;
+  }
+
+  .inputShell.error{
+    border-color: var(--borderError);
+  }
+
+  input{
+    width:100%;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    background: transparent;
+    color: var(--text);
+  }
+
+  input::placeholder{
+    color: #BDBDBD;
+  }
+
+  .eyeBtn{
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+
+  .eyeBtn svg{
+    width: 20px;
+    height: 20px;
+    fill: var(--primary);
+  }
+
+  .liveMsg{
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--borderError);
+    min-height: 16px;
+  }
+
+  .rules{
+    margin-top: 8px;
+  }
+
+  .ruleRow{
+    display:flex;
+    align-items:center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background: var(--grey);
+    flex: 0 0 10px;
+  }
+
+  .ruleRow.grey  { color: var(--grey); }
+  .ruleRow.green { color: var(--green); }
+  .ruleRow.red   { color: var(--red); }
+
+  .ruleRow.grey  .dot{ background: var(--grey); }
+  .ruleRow.green .dot{ background: var(--green); }
+  .ruleRow.red   .dot{ background: var(--red); }
+
+  .btn{
+    width:100%;
+    height: 46px;
+    border: none;
+    border-radius: var(--radiusButton);
+    background: var(--primary);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 500;
+    cursor:pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    margin-top: 6px;
+  }
+
+  .btn:disabled{
+    background: #ccc;
+    cursor:not-allowed;
+    box-shadow: none;
+  }
+
+  .err{
+    margin-top: 10px;
+    text-align:center;
+    color: var(--red);
+    font-size: 14px;
+    white-space: pre-line;
+    min-height: 18px;
+  }
+</style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <h2>Reset Password</h2>
+    <div id="emailHint" class="hint"></div>
+
+    <div class="field">
+      <div class="label">Password</div>
+      <div id="newShell" class="inputShell">
+        <input id="newPass" type="password" placeholder="New password" autocomplete="new-password">
+        <button type="button" id="toggleNew" class="eyeBtn">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+          </svg>
+        </button>
+      </div>
+      <div id="passLive" class="liveMsg"></div>
+
+      <div id="passRules" class="rules" style="display:none;">
+        <div id="rLen"  class="ruleRow grey"><span class="dot"></span><span>At least 8 characters</span></div>
+        <div id="rUp"   class="ruleRow grey"><span class="dot"></span><span>At least one uppercase character</span></div>
+        <div id="rLow"  class="ruleRow grey"><span class="dot"></span><span>At least one lowercase character</span></div>
+        <div id="rNum"  class="ruleRow grey"><span class="dot"></span><span>At least one numeric character</span></div>
+        <div id="rSpec" class="ruleRow grey"><span class="dot"></span><span>At least one special character</span></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label">Confirm password</div>
+      <div id="confirmShell" class="inputShell">
+        <input id="confirmPass" type="password" placeholder="Confirm password" autocomplete="new-password">
+        <button type="button" id="toggleConfirm" class="eyeBtn">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+          </svg>
+        </button>
+      </div>
+      <div id="confirmLive" class="liveMsg"></div>
+
+      <div id="confirmRules" class="rules" style="display:none;">
+        <div id="rMatch" class="ruleRow grey"><span class="dot"></span><span>Matches password</span></div>
+      </div>
+    </div>
+
+    <div id="err" class="err"></div>
+    <button id="saveBtn" class="btn" disabled>Save</button>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, verifyPasswordResetCode, confirmPasswordReset }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey:"YOUR_API_KEY",
+    authDomain:"YOUR_AUTH_DOMAIN",
+    projectId:"YOUR_PROJECT_ID",
+    storageBucket:"YOUR_STORAGE_BUCKET",
+    messagingSenderId:"YOUR_MESSAGING_ID",
+    appId:"YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const params = new URLSearchParams(location.search);
+  const oobCode = params.get("oobCode");
+
+  const newPass = document.getElementById("newPass");
+  const confirmPass = document.getElementById("confirmPass");
+  const newShell = document.getElementById("newShell");
+  const confirmShell = document.getElementById("confirmShell");
+  const saveBtn = document.getElementById("saveBtn");
+  const emailHint = document.getElementById("emailHint");
+  const errEl = document.getElementById("err");
+
+  function hasUpper(s){ return /[A-Z]/.test(s); }
+  function hasLower(s){ return /[a-z]/.test(s); }
+  function hasNum(s){ return /[0-9]/.test(s); }
+  function hasSpecial(s){ return /[!@#$%^&*(),.?":{}|<>_\-\\/\[\]=+;`~]/.test(s); }
+  function lenOk(s){ return s.length >= 8; }
+  function setRule(id, state){
+  const el = document.getElementById(id);
+  el.classList.remove("grey","green","red");
+  el.classList.add(state);
+}
+  function updateUI(){
+  const p = newPass.value;
+  const c = confirmPass.value;
+
+  const activePass = p.length > 0;
+  const activeConfirm = c.length > 0;
+
+  const r1 = lenOk(p);
+  const r2 = hasUpper(p);
+  const r3 = hasLower(p);
+  const r4 = hasNum(p);
+  const r5 = hasSpecial(p);
+  const r6 = (c.length > 0 && c === p);
+
+  // ===== Password Rules =====
+  setRule("rLen",  activePass ? (r1 ? "green" : "red") : "grey");
+  setRule("rUp",   activePass ? (r2 ? "green" : "red") : "grey");
+  setRule("rLow",  activePass ? (r3 ? "green" : "red") : "grey");
+  setRule("rNum",  activePass ? (r4 ? "green" : "red") : "grey");
+  setRule("rSpec", activePass ? (r5 ? "green" : "red") : "grey");
+
+  // ===== Confirm Rule =====
+  setRule("rMatch", activeConfirm ? (r6 ? "green" : "red") : "grey");
+
+  // ===== Button =====
+  const valid = r1 && r2 && r3 && r4 && r5;
+  saveBtn.disabled = !(valid && r6);
+}
+
+  newPass.addEventListener("input", updateUI);
+  confirmPass.addEventListener("input", updateUI);
+
+  document.getElementById("toggleNew").onclick = () =>
+    newPass.type = newPass.type === "password" ? "text" : "password";
+
+  document.getElementById("toggleConfirm").onclick = () =>
+    confirmPass.type = confirmPass.type === "password" ? "text" : "password";
+
+  try{
+    const email = await verifyPasswordResetCode(auth, oobCode);
+    emailHint.textContent = "for " + email;
+  }catch(e){
+    errEl.textContent = "This reset link is invalid or expired.";
+    saveBtn.disabled = true;
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    try{
+      await confirmPasswordReset(auth, oobCode, newPass.value);
+      alert("Password updated successfully.");
+    }catch(e){
+      errEl.textContent = e.message;
+    }
+  });
+</script>
+</body>
+</html>

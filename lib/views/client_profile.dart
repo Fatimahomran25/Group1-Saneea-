@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -90,10 +89,7 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
               style: TextButton.styleFrom(foregroundColor: purple),
             )
           else ...[
-            TextButton(
-              onPressed: c.cancelEdit,
-              child: const Text("Cancel"),
-            ),
+            TextButton(onPressed: c.cancelEdit, child: const Text("Cancel")),
             const SizedBox(width: 6),
             TextButton.icon(
               onPressed: c.isSaving
@@ -107,7 +103,9 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            ok ? "Saved successfully ✅" : (c.error ?? "Save failed"),
+                            ok
+                                ? "Saved successfully ✅"
+                                : (c.error ?? "Save failed"),
                           ),
                         ),
                       );
@@ -260,7 +258,8 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _AccountActionsCard(
-                onResetPassword: () => Navigator.pushNamed(context, '/forgotPassword'),
+                onResetPassword: () =>
+                    Navigator.pushNamed(context, '/forgotPassword'),
                 onDelete: () => c.deleteAccount(context),
               ),
             ),
@@ -352,7 +351,11 @@ class _Header extends StatelessWidget {
                                 backgroundColor: const Color(0xFFF2EAFB),
                                 backgroundImage: avatar,
                                 child: avatar == null
-                                    ? Icon(Icons.person, color: purple, size: 34)
+                                    ? Icon(
+                                        Icons.person,
+                                        color: purple,
+                                        size: 34,
+                                      )
                                     : null,
                               ),
                             ),
@@ -366,9 +369,15 @@ class _Header extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: purple.withOpacity(0.35)),
+                                    border: Border.all(
+                                      color: purple.withOpacity(0.35),
+                                    ),
                                   ),
-                                  child: Icon(Icons.camera_alt, size: 14, color: purple),
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    size: 14,
+                                    color: purple,
+                                  ),
                                 ),
                               ),
                           ],
@@ -440,7 +449,7 @@ class _SectionCard extends StatelessWidget {
             color: Colors.black.withOpacity(0.03),
             blurRadius: 12,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
       ),
       child: child,
@@ -507,14 +516,20 @@ class _EditableField extends StatelessWidget {
             filled: true,
             fillColor: Colors.white.withOpacity(0.75),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(
               borderSide: BorderSide(color: purple, width: 1.4),
             ),
             disabledBorder: border.copyWith(
-              borderSide: BorderSide(color: purple.withOpacity(0.18), width: 1.2),
+              borderSide: BorderSide(
+                color: purple.withOpacity(0.18),
+                width: 1.2,
+              ),
             ),
             errorBorder: border.copyWith(
               borderSide: const BorderSide(color: Colors.red, width: 1.3),
