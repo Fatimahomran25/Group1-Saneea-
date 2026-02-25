@@ -138,10 +138,13 @@
       </svg>
     </button>
   </div>
+<!-- rules تحت new password -->
+<div id="rulesMain"></div>
 
-  <div id="rules"></div>
-  <div id="err" class="err"></div>
+<!-- rules تحت confirm password -->
+<div id="rulesMatch"></div>
 
+<div id="err" class="err"></div>
   <button id="saveBtn" disabled>Save</button>
 
 <script type="module">
@@ -166,7 +169,8 @@
 
   const newPass = document.getElementById("newPass");
   const confirmPass = document.getElementById("confirmPass");
-  const rulesEl = document.getElementById("rules");
+  const rulesMainEl = document.getElementById("rulesMain");
+const rulesMatchEl = document.getElementById("rulesMatch");
   const errEl = document.getElementById("err");
   const saveBtn = document.getElementById("saveBtn");
   const emailHint = document.getElementById("emailHint");
@@ -215,15 +219,15 @@
     const s4 = !typed ? "neutral" : (r4 ? "ok" : "bad");
     const s5 = !typed ? "neutral" : (r5 ? "ok" : "bad");
     const s6 = !typedConfirm ? "neutral" : (r6 ? "ok" : "bad");
+rulesMainEl.innerHTML =
+  ruleRow("At least 8 characters", s1) +
+  ruleRow("At least one uppercase character", s2) +
+  ruleRow("At least one lowercase character", s3) +
+  ruleRow("At least one numeric character", s4) +
+  ruleRow("At least one special character", s5);
 
-    rulesEl.innerHTML =
-      ruleRow("At least 8 characters", s1) +
-      ruleRow("At least one uppercase character", s2) +
-      ruleRow("At least one lowercase character", s3) +
-      ruleRow("At least one numeric character", s4) +
-      ruleRow("At least one special character", s5) +
-      ruleRow("Passwords match", s6);
-
+rulesMatchEl.innerHTML =
+  ruleRow("Passwords match", s6);
     const allOk = r1 && r2 && r3 && r4 && r5 && r6;
     saveBtn.disabled = !allOk;
   }
