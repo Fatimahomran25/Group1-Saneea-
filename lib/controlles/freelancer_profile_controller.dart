@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/freelancer_profile_model.dart';
 
 class FreelancerProfileController extends ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
-
+ final _storage = FirebaseStorage.instance;
   bool isLoading = true;
   bool isSaving = false;
   bool isEditing = false;
@@ -40,17 +40,16 @@ class FreelancerProfileController extends ChangeNotifier {
 
   // options
   static const List<String> serviceTypeOptions = [
-    "one-time",
-    "part-time",
-    "full-time",
-  ];
+  "one-time",
+  "long-term",
+  "both",
+];
 
-  static const List<String> workingModeOptions = [
-    "in person",
-    "remote",
-    "hybrid",
-  ];
-
+static const List<String> workingModeOptions = [
+  "online",
+  "in-person",
+  "both",
+];
   int get bioLen => bioCtrl.text.length;
 
   Future<void> init() async {
@@ -205,6 +204,50 @@ class FreelancerProfileController extends ChangeNotifier {
     notifyListeners();
   }
 
+
+Future<void> setServiceTypeAndPersist(String v) async {
+  if (!isEditing || profile == null) return;
+
+  final old = profile!.serviceType;
+
+  profile = profile!.copyWith(serviceType: v);
+  notifyListeners();
+
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _db.collection('users').doc(user.uid).update({
+      'serviceType': v,
+    });
+  } catch (e) {
+    profile = profile!.copyWith(serviceType: old);
+    error = "Failed to save service type";
+    notifyListeners();
+  }
+}
+
+Future<void> setWorkingModeAndPersist(String v) async {
+  if (!isEditing || profile == null) return;
+
+  final old = profile!.workingMode;
+
+  profile = profile!.copyWith(workingMode: v);
+  notifyListeners();
+
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _db.collection('users').doc(user.uid).update({
+      'workingMode': v,
+    });
+  } catch (e) {
+    profile = profile!.copyWith(workingMode: old);
+    error = "Failed to save working mode";
+    notifyListeners();
+  }
+}
   void addExperience(ExperienceModel e) {
     if (!isEditing || profile == null) return;
     final list = [...profile!.experiences, e];
@@ -241,7 +284,42 @@ class FreelancerProfileController extends ChangeNotifier {
     try {
       final user = _auth.currentUser;
       if (user == null) throw "Not logged in";
+      final uid = user.uid;
+      String? photoUrl = profile!.photoUrl;
 
+if (pickedImageFile != null) {
+  final ref = _storage.ref().child('users/$uid/profile.jpg');
+
+  await ref.putFile(pickedImageFile!);
+
+  photoUrl = await ref.getDownloadURL();
+}
+
+// ===== رفع صور البورتفوليو =====
+final List<String> uploadedPortfolioUrls = [];
+
+for (final file in pickedPortfolioFiles) {
+  final id = DateTime.now().microsecondsSinceEpoch.toString();
+
+  final ref = _storage
+      .ref()
+      .child('users/$uid/portfolio/$id.jpg');
+
+  await ref.putFile(
+    file,
+    SettableMetadata(contentType: 'image/jpeg'),
+  );
+
+  final url = await ref.getDownloadURL();
+
+  uploadedPortfolioUrls.add(url);
+}
+
+// دمج القديم + الجديد
+final mergedPortfolioUrls = [
+  ...profile!.portfolioUrls,
+  ...uploadedPortfolioUrls,
+];
       final newName = nameCtrl.text.trim();
       final parts = newName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
       final firstName = parts.isNotEmpty ? parts.first : '';
@@ -264,8 +342,7 @@ class FreelancerProfileController extends ChangeNotifier {
       // نخليه اختياري: لو فاضي نخزن null أو "" (أنا بخليه "")
       final ibanToSave = newIban.isEmpty ? "" : newIban;
 
-      // (رفع صورة لستوريج لاحقا
-      String? photoUrl = profile!.photoUrl;
+      
 
        await  _db.collection('users').doc(user.uid).set({
       'name': newName,
@@ -278,6 +355,7 @@ class FreelancerProfileController extends ChangeNotifier {
     'workingMode': profile!.workingMode,
     'experiences': profile!.experiences.map((e) => e.toMap()).toList(),
     'iban': ibanToSave,
+    'portfolioUrls': mergedPortfolioUrls,
   if (photoUrl != null) 'photoUrl': photoUrl,
 }, SetOptions(merge: true));
 
@@ -295,6 +373,7 @@ class FreelancerProfileController extends ChangeNotifier {
         bio: safeBio,
         photoUrl: photoUrl,
         iban: ibanToSave.isEmpty ? null : ibanToSave,
+        portfolioUrls: mergedPortfolioUrls,
       );
 
       isEditing = false;

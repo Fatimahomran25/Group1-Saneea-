@@ -12,7 +12,7 @@ import 'views/client_home_screen.dart';
 import 'views/admin_home.dart';
 import 'views/password.dart'; // <-- ForgotPasswordScreen + ResetPasswordScreen
 
-import 'views/admin_profile.dart';
+import 'package:saneea_app/views/admin_profile.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 

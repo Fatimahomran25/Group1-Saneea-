@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,10 +9,11 @@ import '../controlles/client_profile_controller.dart';
 class ClientProfile extends StatelessWidget {
   const ClientProfile({super.key});
 
-  // colors close to figma
-  static const Color kPurple = Color(0xFF3A1B63);
-  static const Color kSoftBg = Color(0xFFF5F0FA);
-  static const Color kBorder = Color(0x663A1B63);
+  // ✅ نفس ألوان الفريلانسر/الأدمن
+  static const Color kPurple = Color(0xFF4F378B);
+  static const Color kHeaderBg = Color(0xFFF2EAFB);
+  static const Color kCardBg = Color(0xFFF4F1FA);
+  static const Color kBorder = Color(0x66B8A9D9);
 
   @override
   Widget build(BuildContext context) {
@@ -41,12 +43,38 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
   Future<void> _pickProfileImage(ClientProfileController c) async {
     if (!c.isEditing) return;
 
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
     final XFile? x = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
+      source: source,
+      imageQuality: 90,
     );
     if (x == null) return;
-
     c.setPickedImage(File(x.path));
   }
 
@@ -55,10 +83,16 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
     final c = context.watch<ClientProfileController>();
 
     if (c.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
     if (c.error != null) {
-      return Scaffold(body: Center(child: Text(c.error!)));
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text(c.error!)),
+      );
     }
 
     final p = c.profile!;
@@ -73,108 +107,83 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+
+      // ✅ AppBar: Back + Logout أحمر (مثل ما طلبتي)
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const BackButton(color: Colors.black),
         actions: [
-          if (!c.isEditing)
-            TextButton.icon(
-              onPressed: c.startEdit,
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text("Edit"),
-              style: TextButton.styleFrom(foregroundColor: purple),
-            )
-          else ...[
-            TextButton(onPressed: c.cancelEdit, child: const Text("Cancel")),
-            const SizedBox(width: 6),
-            TextButton.icon(
-              onPressed: c.isSaving
-                  ? null
-                  : () async {
-                      if (!(_formKey.currentState?.validate() ?? false)) return;
-
-                      final ok = await c.save();
-                      if (!mounted) return;
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ok
-                                ? "Saved successfully ✅"
-                                : (c.error ?? "Save failed"),
-                          ),
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text("Save"),
-              style: TextButton.styleFrom(foregroundColor: purple),
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // ✅ Logout فوق فقط
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
+            tooltip: "Log out",
             onPressed: () => c.logout(context),
+            icon: const Icon(Icons.logout, color: Colors.red),
           ),
+          const SizedBox(width: 6),
         ],
       ),
+
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            _Header(
+            const SizedBox(height: 10),
+
+            // ✅ Header مطابق للفريلانسر + زر Edit أيقونة داخل الهيدر
+            _HeaderLikeFreelancer(
               purple: purple,
               isEditing: c.isEditing,
               nameCtrl: c.nameCtrl,
               nameValidator: c.validateName,
+              roleText: "Client",
               onPickImage: () => _pickProfileImage(c),
               avatar: avatar,
+              onEditTap: c.startEdit,
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
-            // BIO Card
+            // ✅ كارد طويل واحد
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _SectionCard(
-                child: _EditableField(
-                  label: "Bio",
-                  enabled: c.isEditing,
-                  controller: c.bioCtrl,
-                  maxLength: ClientProfileController.bioMax,
-                  maxLines: 4,
-                  validator: c.validateBio,
-                  counterText: "${c.bioLen.clamp(0, 150)}/150",
-                  hintText: "Write your bio...",
-                  purple: purple,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+                decoration: BoxDecoration(
+                  color: ClientProfile.kCardBg,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: ClientProfile.kBorder, width: 1.2),
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Info card: National ID + Email + Rating
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _SectionCard(
-                background: ClientProfile.kSoftBg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Bio
+                    _EditableField(
+                      label: "Bio",
+                      enabled: c.isEditing,
+                      controller: c.bioCtrl,
+                      maxLength: ClientProfileController.bioMax,
+                      maxLines: 4,
+                      validator: c.validateBio,
+                      counterText:
+                          "${c.bioLen.clamp(0, ClientProfileController.bioMax)}/${ClientProfileController.bioMax}",
+                      hintText: "Write your bio...",
+                      purple: purple,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // National ID
                     _ReadOnlyBlock(
                       title: "National ID / Iqama",
                       value: p.nationalId,
                       purple: purple,
                     ),
-                    const SizedBox(height: 10),
 
+                    const SizedBox(height: 14),
+
+                    // Email
                     _EditableField(
                       label: "Email Address",
                       enabled: c.isEditing,
@@ -185,84 +194,184 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
                       purple: purple,
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
-                    Text(
-                      "Rating",
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    // Rating
+                    _InnerBox(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Rating",
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _StarsReadOnly(value: p.rating, size: 22),
+                              const SizedBox(width: 10),
+                              Text(
+                                p.rating.toStringAsFixed(1),
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _StarsReadOnly(value: p.rating, size: 22),
-                        const SizedBox(width: 8),
-                        Text(
-                          p.rating.toStringAsFixed(1),
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                      ],
+
+                    const SizedBox(height: 14),
+
+                    // Reviews title
+                    Text(
+                      "Reviews",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                    const SizedBox(height: 8),
+
+                    // Reviews box
+                    _InnerBox(
+                      child: c.reviews.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              child: Center(
+                                child: Text(
+                                  "No reviews yet.",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Column(
+                              children: c.reviews
+                                  .map(
+                                    (r) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: _ReviewFigmaTile(
+                                        name: r.reviewerName,
+                                        rating: r.rating,
+                                        text: r.text,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Buttons
+                    if (c.isEditing) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: c.isSaving ? null : c.cancelEdit,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text("Cancel"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: purple,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: c.isSaving
+                                  ? null
+                                  : () async {
+                                      final ok =
+                                          _formKey.currentState?.validate() ??
+                                          false;
+                                      if (!ok) return;
+
+                                      final saved = await c.save();
+                                      if (!mounted) return;
+
+                                      if (saved) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Saved successfully ✅",
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              "Save failed: ${c.error ?? ''}",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                              child: c.isSaving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text("Done"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      _ActionBtn(
+                        text: "Reset password",
+                        color: const Color(0xFF2F7BFF),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/forgotPassword'),
+                      ),
+                      const SizedBox(height: 12),
+                      _ActionBtn(
+                        text: "Delete account",
+                        color: Colors.red,
+                        onPressed: () => c.deleteAccount(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 14),
-
-            // Reviews title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "Reviews",
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // ✅ Reviews outer box + inner boxes (figma-like)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _ReviewsOuterCard(
-                child: c.reviews.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text("No reviews yet."),
-                      )
-                    : Column(
-                        children: c.reviews
-                            .map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _ReviewFigmaTile(
-                                  name: r.reviewerName,
-                                  rating: r.rating,
-                                  text: r.text,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-              ),
-            ),
-
             const SizedBox(height: 16),
-
-            // ✅ تحت: Reset + Delete فقط
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _AccountActionsCard(
-                onResetPassword: () =>
-                    Navigator.pushNamed(context, '/forgotPassword'),
-                onDelete: () => c.deleteAccount(context),
-              ),
-            ),
           ],
         ),
       ),
@@ -272,83 +381,71 @@ class _ClientProfileBodyState extends State<_ClientProfileBody> {
 
 // ---------------- Widgets ----------------
 
-class _Header extends StatelessWidget {
-  const _Header({
+class _HeaderLikeFreelancer extends StatelessWidget {
+  const _HeaderLikeFreelancer({
     required this.purple,
     required this.isEditing,
     required this.nameCtrl,
     required this.nameValidator,
+    required this.roleText,
     required this.onPickImage,
     required this.avatar,
+    required this.onEditTap,
   });
 
   final Color purple;
   final bool isEditing;
   final TextEditingController nameCtrl;
   final String? Function(String?) nameValidator;
+  final String roleText;
   final VoidCallback onPickImage;
   final ImageProvider? avatar;
+  final VoidCallback onEditTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          height: 210,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2EAFB),
-            border: Border.all(color: purple.withOpacity(0.25)),
-          ),
-          child: Stack(
-            children: [
-              // decorative circles (like figma)
+      child: Container(
+        height: 210,
+        decoration: BoxDecoration(
+          color: ClientProfile.kHeaderBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: purple.withOpacity(0.22), width: 1.2),
+        ),
+        child: Stack(
+          children: [
+            // ✅ Edit icon فقط داخل الهيدر (مثل الفريلانسر)
+            if (!isEditing)
               Positioned(
-                top: -40,
-                right: -30,
-                child: Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    color: purple.withOpacity(0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: purple.withOpacity(0.18)),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 30,
-                right: 20,
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: purple.withOpacity(0.18)),
-                  ),
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  tooltip: "Edit",
+                  onPressed: onEditTap,
+                  icon: Icon(Icons.edit, color: purple, size: 20),
                 ),
               ),
 
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Avatar
-                      GestureDetector(
-                        onTap: isEditing ? onPickImage : null,
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      height: 110,
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: CircleAvatar(
                               radius: 44,
                               backgroundColor: Colors.white,
                               child: CircleAvatar(
                                 radius: 41,
-                                backgroundColor: const Color(0xFFF2EAFB),
+                                backgroundColor: ClientProfile.kHeaderBg,
                                 backgroundImage: avatar,
                                 child: avatar == null
                                     ? Icon(
@@ -359,98 +456,90 @@ class _Header extends StatelessWidget {
                                     : null,
                               ),
                             ),
-                            if (isEditing)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
+                          ),
+                          if (isEditing)
+                            Positioned(
+                              right: 10,
+                              bottom: 8,
+                              child: GestureDetector(
+                                onTap: onPickImage,
                                 child: Container(
-                                  width: 26,
-                                  height: 26,
+                                  width: 30,
+                                  height: 30,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: purple,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: purple.withOpacity(0.35),
+                                      color: Colors.white,
+                                      width: 2,
                                     ),
                                   ),
-                                  child: Icon(
-                                    Icons.camera_alt,
-                                    size: 14,
-                                    color: purple,
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 18,
                                   ),
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-
-                      // Name (editable)
-                      SizedBox(
-                        width: 250,
-                        child: TextFormField(
-                          controller: nameCtrl,
-                          enabled: isEditing,
-                          validator: nameValidator,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: purple,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            disabledBorder: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 2),
-                          ),
-                        ),
-                      ),
-
-                      Text(
-                        "Client",
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: 250,
+                      child: TextFormField(
+                        controller: nameCtrl,
+                        enabled: isEditing,
+                        validator: nameValidator,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          color: purple,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 2),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      roleText,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child, this.background});
-
+class _InnerBox extends StatelessWidget {
+  const _InnerBox({required this.child});
   final Widget child;
-  final Color? background;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: background ?? Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: child,
     );
@@ -582,24 +671,6 @@ class _ReadOnlyBlock extends StatelessWidget {
   }
 }
 
-class _ReviewsOuterCard extends StatelessWidget {
-  const _ReviewsOuterCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-      ),
-      child: child,
-    );
-  }
-}
-
 class _ReviewFigmaTile extends StatelessWidget {
   const _ReviewFigmaTile({
     required this.name,
@@ -666,45 +737,6 @@ class _ReviewFigmaTile extends StatelessWidget {
   }
 }
 
-class _AccountActionsCard extends StatelessWidget {
-  const _AccountActionsCard({
-    required this.onResetPassword,
-    required this.onDelete,
-  });
-
-  final VoidCallback onResetPassword;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-        decoration: BoxDecoration(
-          color: ClientProfile.kSoftBg,
-          border: Border.all(color: ClientProfile.kBorder, width: 1.2),
-        ),
-        child: Column(
-          children: [
-            _ActionBtn(
-              text: "Reset password",
-              color: Colors.blue,
-              onPressed: onResetPassword,
-            ),
-            const SizedBox(height: 12),
-            _ActionBtn(
-              text: "Delete account",
-              color: Colors.red,
-              onPressed: onDelete,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ActionBtn extends StatelessWidget {
   const _ActionBtn({
     required this.text,
@@ -725,7 +757,7 @@ class _ActionBtn extends StatelessWidget {
         side: BorderSide(color: Colors.grey.shade300),
         padding: const EdgeInsets.symmetric(vertical: 14),
         minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         backgroundColor: Colors.white.withOpacity(0.6),
       ),
       child: Text(
@@ -743,7 +775,7 @@ class _ActionBtn extends StatelessWidget {
 class _StarsReadOnly extends StatelessWidget {
   const _StarsReadOnly({required this.value, this.size = 20});
 
-  final double value; // 0..5
+  final double value;
   final double size;
 
   @override

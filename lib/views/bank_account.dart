@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controlles/bank_account_controller.dart';
 import '../models/bank_account_model.dart';
-import 'package:flutter/services.dart';
 
 class BankAccountView extends StatefulWidget {
   const BankAccountView({super.key});
@@ -31,97 +31,31 @@ class _BankAccountViewState extends State<BankAccountView> {
     super.dispose();
   }
 
-  Future<void> _openAddDialog() async {
-    c.ibanCtrl.clear();
+  Future<void> _save() async {
+    final ok = _formKey.currentState?.validate() ?? false;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fix the highlighted fields")),
+      );
+      return;
+    }
 
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add IBAN'),
-        content: Form(
-          key: _formKey,
-          child: TextFormField(
-            controller: c.ibanCtrl,
-            validator: c.validateIban,
-             maxLength: 24, 
-             inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9 ]')),
-             IbanFormatter(),
-             ],
-            decoration: const InputDecoration(
-              labelText: 'IBAN',
-              hintText: 'SAxxxxxxxxxxxxxxxxxxxx',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: kPurple),
-            onPressed: c.isSaving
-                ? null
-                : () async {
-                    final ok = _formKey.currentState?.validate() ?? false;
-                    if (!ok) return;
-                    await c.addIban();
-                    if (!mounted) return;
-                    Navigator.pop(ctx);
-                  },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final saved = await c.saveBankInfo();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(saved ? "Saved ✅" : "Save failed: ${c.error ?? ''}")),
     );
+
+    if (saved) Navigator.pop(context, true); // ✅ يرجّع true للبروفايل للتحديث
   }
 
-  Future<void> _openEditDialog(BankAccountModel item) async {
-    c.ibanCtrl.text = item.iban;
-
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit IBAN'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: c.ibanCtrl,
-            validator: c.validateIban,
-            decoration: const InputDecoration(
-              labelText: 'IBAN',
-              hintText: 'SAxxxxxxxxxxxxxxxxxxxx',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: kPurple),
-            onPressed: c.isSaving
-                ? null
-                : () async {
-                    final ok = formKey.currentState?.validate() ?? false;
-                    if (!ok) return;
-                    await c.updateIban(id: item.id, newIban: c.ibanCtrl.text);
-                    if (!mounted) return;
-                    Navigator.pop(ctx);
-                  },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(BankAccountModel item) async {
+  Future<void> _delete() async {
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete IBAN'),
-        content: Text('Are you sure you want to delete:\n${item.iban}?'),
+        title: const Text('Delete bank info'),
+        content: const Text('Are you sure you want to delete your bank information?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
@@ -133,9 +67,16 @@ class _BankAccountViewState extends State<BankAccountView> {
       ),
     );
 
-    if (yes == true) {
-      await c.deleteIban(item.id);
-    }
+    if (yes != true) return;
+
+    final deleted = await c.deleteBankInfo();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(deleted ? "Deleted ✅" : "Delete failed: ${c.error ?? ''}")),
+    );
+
+    if (deleted) Navigator.pop(context, true);
   }
 
   @override
@@ -151,53 +92,196 @@ class _BankAccountViewState extends State<BankAccountView> {
             elevation: 0,
             foregroundColor: Colors.black,
           ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: kPurple,
-            onPressed: c.isSaving ? null : _openAddDialog,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
           body: c.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : c.error != null
-                  ? Center(child: Text(c.error!))
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: _Card(
-                        borderColor: kBorder,
-                        background: kSoftBg,
+              : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    child: _Card(
+                      borderColor: kBorder,
+                      background: kSoftBg,
+                      child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Your IBANs',
+                              'Bank Information',
                               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
 
-                            if (c.accounts.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 18),
-                                child: Text('No IBAN added yet. Tap + to add one.'),
-                              )
-                            else
-                              ...c.accounts.map((a) => _IbanTile(
-                                    purple: kPurple,
-                                    item: a,
-                                    onSetDefault: () => c.setDefault(a.id),
-                                    onEdit: () => _openEditDialog(a),
-                                    onDelete: () => _confirmDelete(a),
-                                    disabled: c.isSaving,
-                                  )),
+                            // ✅ Summary (masked iban + last4 + expiry)
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: kBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "IBAN: ${BankAccountModel.maskIban(c.savedIban)}",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade800,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    (c.savedCardLast4 ?? '').isEmpty
+                                        ? "Saved card: none"
+                                        : "Saved card: **** **** **** ${c.savedCardLast4}",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    (c.savedExpiry ?? '').isEmpty
+                                        ? "Expiry: none"
+                                        : "Expiry: ${c.savedExpiry}",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // -------- IBAN --------
+                            TextFormField(
+                              controller: c.ibanCtrl,
+                              validator: c.validateIban,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9 ]')),
+                                IbanFormatter(),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'IBAN',
+                                hintText: 'SA00 0000 0000 0000 0000 0000',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // -------- Card Number --------
+                            TextFormField(
+                              controller: c.cardCtrl,
+                              validator: c.validateCard,
+                              keyboardType: TextInputType.number,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(16),
+                                CardNumberFormatter(),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Card Number',
+                                hintText: c.hasSavedCard
+                                    ? '**** **** **** ${c.savedCardLast4}'
+                                    : '1234 1234 1234 1234',
+                                helperText: c.hasSavedCard
+                                    ? 'Leave empty to keep saved card'
+                                    : 'Required',
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // -------- Expiry --------
+                            TextFormField(
+                              controller: c.expiryCtrl,
+                              validator: c.validateExpiry,
+                              keyboardType: TextInputType.number,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                                ExpiryDateFormatter(),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Expiry (MM/YY)',
+                                hintText: c.hasSavedExpiry ? c.savedExpiry : '08/28',
+                                helperText: c.hasSavedCard
+                                    ? 'Leave empty if you did not change card'
+                                    : 'Required',
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // -------- CVC --------
+                            // ❌ ما نعرض CVC محفوظ (مافيه)
+                            TextFormField(
+                              controller: c.cvcCtrl,
+                              validator: c.validateCvc,
+                              keyboardType: TextInputType.number,
+                              obscureText: true,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(3),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'CVC',
+                                hintText: '***',
+                                helperText: c.hasSavedCard
+                                    ? 'Leave empty if you did not change card'
+                                    : 'Required',
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton(
+                                    style: FilledButton.styleFrom(backgroundColor: kPurple),
+                                    onPressed: c.isSaving ? null : _save,
+                                    child: c.isSaving
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          )
+                                        : const Text('Save'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: (c.isSaving || !c.hasSavedIban) ? null : _delete,
+                                    child: const Text('Delete'),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ),
+                  ),
+                ),
         );
       },
     );
   }
 }
 
+// ---------- Card wrapper ----------
 class _Card extends StatelessWidget {
   final Widget child;
   final Color borderColor;
@@ -217,103 +301,70 @@ class _Card extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: borderColor, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 6))],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 6)),
+        ],
       ),
       child: child,
     );
   }
 }
 
-class _IbanTile extends StatelessWidget {
-  final Color purple;
-  final BankAccountModel item;
-  final VoidCallback onSetDefault;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final bool disabled;
+// ---------- Formatters ----------
 
-  const _IbanTile({
-    required this.purple,
-    required this.item,
-    required this.onSetDefault,
-    required this.onEdit,
-    required this.onDelete,
-    required this.disabled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: purple.withOpacity(0.20)),
-      ),
-      child: Row(
-        children: [
-          Radio<bool>(
-            value: true,
-            groupValue: item.isDefault,
-            onChanged: disabled ? null : (_) => onSetDefault(),
-            activeColor: purple,
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.iban,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.isDefault ? 'Default' : 'Tap circle to set default',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Edit',
-            onPressed: disabled ? null : onEdit,
-            icon: Icon(Icons.edit, color: purple),
-          ),
-          IconButton(
-            tooltip: 'Delete',
-            onPressed: disabled ? null : onDelete,
-            icon: const Icon(Icons.delete, color: Colors.red),
-
-          ),
-        ],
-      ),
-    );
-  }
-}
-
- 
+// SA.. groups of 4, max 24 chars (without spaces)
 class IbanFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     String text = newValue.text.replaceAll(' ', '').toUpperCase();
-
-    if (text.length > 24) {
-      text = text.substring(0, 24);
-    }
+    if (text.length > 24) text = text.substring(0, 24);
 
     final buffer = StringBuffer();
     for (int i = 0; i < text.length; i++) {
       buffer.write(text[i]);
-      if ((i + 1) % 4 == 0 && i + 1 != text.length) {
-        buffer.write(' ');
-      }
+      if ((i + 1) % 4 == 0 && i + 1 != text.length) buffer.write(' ');
     }
 
     final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+// #### #### #### ####
+class CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text.replaceAll(' ', '');
+    if (text.length > 16) text = text.substring(0, 16);
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if ((i + 1) % 4 == 0 && i + 1 != text.length) buffer.write(' ');
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+// MMYY -> MM/YY
+class ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text.replaceAll('/', '');
+    if (text.length > 4) text = text.substring(0, 4);
+
+    String formatted = text;
+    if (text.length >= 3) {
+      formatted = '${text.substring(0, 2)}/${text.substring(2)}';
+    }
 
     return TextEditingValue(
       text: formatted,

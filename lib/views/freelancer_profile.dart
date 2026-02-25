@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,9 +16,18 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
   final c = FreelancerProfileController();
   final _formKey = GlobalKey<FormState>();
 
-  static const Color kPurple = Color(0xFF4F378B);
-  static const Color kSoftBg = Color(0xFFF4F1FA);
-  static const Color kBorder = Color(0x66B8A9D9);
+  // ✅ Unified (same as AdminProfile)
+  static const Color kPurple = Color.fromRGBO(79, 55, 139, 1);
+  static const Color kHeaderBg = Color(0xFFF2EAFB);
+  static const Color kCardBg = Color(0xFFF4F1FA);
+  static const Color kSoftBorder = Color(0x66B8A9D9);
+
+  String _maskIban(String? iban) {
+    final s = (iban ?? '').replaceAll(' ', '').toUpperCase();
+    if (s.isEmpty) return "No bank account added";
+    final head = s.length >= 4 ? s.substring(0, 4) : s;
+    return '$head •••• •••• •••• •••• ••••';
+  }
 
   @override
   void initState() {
@@ -35,24 +43,40 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
 
   Future<void> _pickProfileImage() async {
     if (!c.isEditing) return;
-    final picker = ImagePicker();
-    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (x == null) return;
-    c.setPickedImage(File(x.path));
+
+    try {
+      // ✅ Choose from gallery (مثل شغلك)
+      final x = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+      );
+      if (x == null) return;
+      c.setPickedImage(File(x.path));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Pick/Crop failed: $e')));
+    }
   }
 
   Future<void> _pickPortfolioImages() async {
     if (!c.isEditing) return;
-    final picker = ImagePicker();
-    final xs = await picker.pickMultiImage(imageQuality: 85);
+    final xs = await ImagePicker().pickMultiImage(imageQuality: 85);
     if (xs.isEmpty) return;
     c.addPortfolioFiles(xs.map((e) => File(e.path)).toList());
   }
 
   Future<ExperienceModel?> _experienceDialog({ExperienceModel? initial}) async {
-    final fieldCtrl = TextEditingController(text: initial?.field ?? "Graphic Design");
-    final orgCtrl = TextEditingController(text: initial?.org ?? "King Saud University");
-    final periodCtrl = TextEditingController(text: initial?.period ?? "Sep 2019 - Jun 2022");
+    final fieldCtrl = TextEditingController(
+      text: initial?.field ?? "Graphic Design",
+    );
+    final orgCtrl = TextEditingController(
+      text: initial?.org ?? "King Saud University",
+    );
+    final periodCtrl = TextEditingController(
+      text: initial?.period ?? "Sep 2019 - Jun 2022",
+    );
 
     final res = await showDialog<ExperienceModel>(
       context: context,
@@ -63,23 +87,35 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
             children: [
               TextField(
                 controller: fieldCtrl,
-                decoration: const InputDecoration(labelText: "Field", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Field",
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: orgCtrl,
-                decoration: const InputDecoration(labelText: "Organization", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Organization",
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: periodCtrl,
-                decoration: const InputDecoration(labelText: "Period", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Period",
+                  border: OutlineInputBorder(),
+                ),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: kPurple),
             onPressed: () {
@@ -121,45 +157,63 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
               elevation: 0,
               leading: const BackButton(color: Colors.black),
               actions: [
-                // ✅ Logout فوق على الجنب
-                IconButton(
-                  tooltip: "Log out",
-                  onPressed: () => c.logout(context),
-                  icon: const Icon(Icons.logout, color: Colors.red),
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: IconButton(
+                    tooltip: "Log out",
+                    onPressed: () => c.logout(context),
+                    icon: const Icon(Icons.logout, color: Colors.red, size: 28),
+                  ),
                 ),
-                const SizedBox(width: 6),
               ],
             ),
             body: c.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : (c.profile == null)
-                    ? Center(child: Text(c.error ?? "Failed to load profile"))
-                    : Form(
-                        key: _formKey,
-                        child: ListView(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          children: [
-                            _Header(
-                              purple: kPurple,
-                              profile: c.profile!,
-                              isEditing: c.isEditing,
-                              pickedImageFile: c.pickedImageFile,
-                              onPickImage: _pickProfileImage,
-                              nameCtrl: c.nameCtrl,
-                              titleCtrl: c.titleCtrl,
-                              onEditTap: c.isEditing ? null : c.startEdit,
-                              nameValidator: c.validateName,
-                              titleValidator: c.validateTitle,
+                ? Center(child: Text(c.error ?? "Failed to load profile"))
+                : Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      children: [
+                        const SizedBox(height: 10),
+
+                        // ✅ Header (مثل Admin/Client)
+                        _HeaderLikeAdmin(
+                          purple: kPurple,
+                          headerBg: kHeaderBg,
+                          isEditing: c.isEditing,
+                          profile: c.profile!,
+                          pickedImageFile: c.pickedImageFile,
+                          onPickImage: _pickProfileImage,
+                          nameCtrl: c.nameCtrl,
+                          titleCtrl: c.titleCtrl,
+                          onEditTap: c.isEditing ? null : c.startEdit,
+                          nameValidator: c.validateName,
+                          titleValidator: c.validateTitle,
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ✅ ONE LONG CARD (مثل Admin)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+                            decoration: BoxDecoration(
+                              color: kCardBg,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: kSoftBorder,
+                                width: 1.2,
+                              ),
                             ),
-
-                            const SizedBox(height: 10),
-
-                            // Bio
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                child: _EditableField(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Bio
+                                _EditableField(
                                   label: "Bio",
                                   enabled: c.isEditing,
                                   controller: c.bioCtrl,
@@ -171,374 +225,471 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
                                   hintText: "Write your bio...",
                                   purple: kPurple,
                                 ),
-                              ),
-                            ),
 
-                            const SizedBox(height: 12),
+                                const SizedBox(height: 18),
 
-                            // Info + options + experience
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                background: kSoftBg,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                // National ID
+                                _ReadOnlyBlock(
+                                  title: "National ID / Iqama",
+                                  value: c.profile!.nationalId,
+                                  purple: kPurple,
+                                ),
+
+                                const SizedBox(height: 18),
+
+                                // Email
+                                _EditableField(
+                                  label: "Email Address",
+                                  enabled: c.isEditing,
+                                  controller: c.emailCtrl,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: c.validateGmail,
+                                  hintText: "name@gmail.com",
+                                  purple: kPurple,
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // IBAN + bank button
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    _ReadOnlyBlock(
-                                      title: "National ID / Iqama",
-                                      value: c.profile!.nationalId,
-                                      purple: kPurple,
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    _EditableField(
-                                      label: "Email Address",
-                                      enabled: c.isEditing,
-                                      controller: c.emailCtrl,
-                                      keyboardType: TextInputType.emailAddress,
-                                      validator: c.validateGmail,
-                                      hintText: "name@gmail.com",
-                                      purple: kPurple,
-                                    ),
-
-                                    const SizedBox(height: 12),
-
-                                    // ✅ IBAN field + bank icon (يدخلك صفحة البنك إذا عندك route)
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Expanded(
-                                          child: _EditableField(
-                                            label: "IBAN (optional)",
-                                            enabled: c.isEditing,
-                                            controller: c.ibanCtrl,
-                                            validator: c.validateIban,
-                                            hintText: "SA00 0000 0000 0000 0000 0000",
-                                            purple: kPurple,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        IconButton(
-                                          tooltip: "Bank account",
-                                          onPressed: () {
-                                            // لو عندك صفحة bank_account.dart اربطيها بالراوت
-                                            Navigator.pushNamed(context, '/bankAccount');
-                                          },
-                                          icon: Icon(Icons.account_balance, color: kPurple),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    Text(
-                                      "Service Type",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _SegmentBar(
-                                      options: FreelancerProfileController.serviceTypeOptions,
-                                      value: c.profile!.serviceType,
-                                      enabled: c.isEditing,
-                                      onChanged: c.setServiceType,
-                                      purple: kPurple,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    Text(
-                                      "Working Mode",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _SegmentBar(
-                                      options: FreelancerProfileController.workingModeOptions,
-                                      value: c.profile!.workingMode,
-                                      enabled: c.isEditing,
-                                      onChanged: c.setWorkingMode,
-                                      purple: kPurple,
-                                    ),
-
-                                    const SizedBox(height: 16),
-
-                                    Row(
-                                      children: [
-                                        Text(
-                                          "Experience",
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        if (c.isEditing)
-                                          TextButton.icon(
-                                            onPressed: () async {
-                                              final res = await _experienceDialog();
-                                              if (res == null) return;
-                                              c.addExperience(res);
-                                            },
-                                            icon: const Icon(Icons.add, size: 18),
-                                            label: const Text("Add"),
-                                            style: TextButton.styleFrom(foregroundColor: kPurple),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-
-                                    ...List.generate(c.profile!.experiences.length, (i) {
-                                      final e = c.profile!.experiences[i];
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 10),
-                                        child: _ExperienceCard(
-                                          purple: kPurple,
-                                          experience: e,
-                                          editable: c.isEditing,
-                                          onEdit: () async {
-                                            final res = await _experienceDialog(initial: e);
-                                            if (res == null) return;
-                                            c.editExperience(i, res);
-                                          },
-                                          onDelete: () => c.deleteExperience(i),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Portfolio (local only)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                background: Colors.white,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          "Portfolio",
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        if (c.isEditing)
-                                          TextButton.icon(
-                                            onPressed: _pickPortfolioImages,
-                                            icon: const Icon(Icons.add, size: 18),
-                                            label: const Text("Add"),
-                                            style: TextButton.styleFrom(foregroundColor: kPurple),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    GridView.builder(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      itemCount: c.pickedPortfolioFiles.isEmpty
-                                          ? 4
-                                          : c.pickedPortfolioFiles.length,
-                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 10,
-                                        mainAxisSpacing: 10,
-                                      ),
-                                      itemBuilder: (ctx, i) {
-                                        if (c.pickedPortfolioFiles.isEmpty) {
-                                          return _PlaceholderTile(purple: kPurple);
-                                        }
-                                        final f = c.pickedPortfolioFiles[i];
-                                        return Stack(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius: BorderRadius.circular(12),
-                                              child: Image.file(
-                                                f,
-                                                fit: BoxFit.cover,
-                                                width: double.infinity,
-                                                height: double.infinity,
-                                              ),
-                                            ),
-                                            if (c.isEditing)
-                                              Positioned(
-                                                top: 6,
-                                                right: 6,
-                                                child: IconButton(
-                                                  onPressed: () => c.removePortfolioAt(i),
-                                                  icon: const Icon(Icons.close, color: Colors.red),
-                                                  style: IconButton.styleFrom(backgroundColor: Colors.white),
-                                                ),
-                                              ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // ✅ Rating (UI only ثابت زي الصورة)
-                            const SizedBox(height: 12),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                background: kSoftBg,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Rating",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        const _StarsReadOnly(value: 0.0, size: 22),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          "0.0",
-                                          style: TextStyle(
-                                            color: Colors.grey.shade700,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // ✅ Reviews (UI only ثابت)
-                            const SizedBox(height: 14),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                "Reviews",
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                background: Colors.white,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
-                                  child: Center(
-                                    child: Text(
-                                      "No reviews yet.",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            // Buttons
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _SectionCard(
-                                borderColor: kBorder,
-                                background: kSoftBg,
-                                child: Column(
-                                  children: [
-                                    if (c.isEditing) ...[
-                                      Row(
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Expanded(
-                                            child: OutlinedButton(
-                                              onPressed: c.isSaving ? null : c.cancelEdit,
-                                              child: const Text("Cancel"),
+                                          Text(
+                                            "IBAN",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: FilledButton(
-                                              style: FilledButton.styleFrom(backgroundColor: kPurple),
-                                              onPressed: c.isSaving
-                                                  ? null
-                                                  : () async {
-                                                      final ok = _formKey.currentState?.validate() ?? false;
-                                                      if (!ok) return;
-
-                                                      final saved = await c.save();
-                                                      if (!mounted) return;
-
-                                                      if (saved) {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(content: Text("Saved successfully ✅")),
-                                                        );
-                                                      } else {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(content: Text("Save failed: ${c.error ?? ''}")),
-                                                        );
-                                                      }
-                                                    },
-                                              child: c.isSaving
-                                                  ? const SizedBox(
-                                                      width: 18,
-                                                      height: 18,
-                                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                                    )
-                                                  : const Text("Done"),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                color: kPurple.withOpacity(
+                                                  0.25,
+                                                ),
+                                                width: 1.2,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              _maskIban(c.profile!.iban),
+                                              style: TextStyle(
+                                                color: Colors.grey.shade800,
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ] else ...[
-                                      _ActionBtn(
-                                        text: "Reset password",
-                                        color: const Color(0xFF2F7BFF),
-                                        onPressed: () => c.goResetPassword(context),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    IconButton(
+                                      tooltip: "Bank account",
+                                      onPressed: () async {
+                                        final changed =
+                                            await Navigator.pushNamed(
+                                              context,
+                                              '/bankAccount',
+                                            );
+                                        if (changed == true) {
+                                          await c.init();
+                                        }
+                                      },
+                                      icon: Icon(
+                                        Icons.account_balance,
+                                        color: kPurple,
                                       ),
-                                      const SizedBox(height: 12),
-                                      _ActionBtn(
-                                        text: "Delete account",
-                                        color: Colors.red,
-                                        onPressed: () => c.deleteAccount(context),
-                                      ),
-                                    ],
+                                    ),
                                   ],
                                 ),
-                              ),
+
+                                const SizedBox(height: 16),
+
+                                Text(
+                                  "Service Type",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _SegmentBar(
+                                  options: FreelancerProfileController
+                                      .serviceTypeOptions,
+                                  value: c.profile!.serviceType,
+                                  enabled: c.isEditing,
+                                  onChanged: (v) =>
+                                      c.setServiceTypeAndPersist(v),
+                                  purple: kPurple,
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                Text(
+                                  "Working Mode",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _SegmentBar(
+                                  options: FreelancerProfileController
+                                      .workingModeOptions,
+                                  value: c.profile!.workingMode,
+                                  enabled: c.isEditing,
+                                  onChanged: (v) =>
+                                      c.setWorkingModeAndPersist(v),
+                                  purple: kPurple,
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                // Experience
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Experience",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (c.isEditing)
+                                      TextButton.icon(
+                                        onPressed: () async {
+                                          final res = await _experienceDialog();
+                                          if (res == null) return;
+                                          c.addExperience(res);
+                                        },
+                                        icon: const Icon(Icons.add, size: 18),
+                                        label: const Text("Add"),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: kPurple,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+
+                                ...List.generate(
+                                  c.profile!.experiences.length,
+                                  (i) {
+                                    final e = c.profile!.experiences[i];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: _ExperienceCard(
+                                        purple: kPurple,
+                                        experience: e,
+                                        editable: c.isEditing,
+                                        onEdit: () async {
+                                          final res = await _experienceDialog(
+                                            initial: e,
+                                          );
+                                          if (res == null) return;
+                                          c.editExperience(i, res);
+                                        },
+                                        onDelete: () => c.deleteExperience(i),
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // Portfolio (inside same long card)
+                                _InnerBox(
+                                  borderColor: kSoftBorder,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "Portfolio",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          if (c.isEditing)
+                                            TextButton.icon(
+                                              onPressed: _pickPortfolioImages,
+                                              icon: const Icon(
+                                                Icons.add,
+                                                size: 18,
+                                              ),
+                                              label: const Text("Add"),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: kPurple,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Builder(
+                                        builder: (context) {
+                                          final net = c.profile!.portfolioUrls;
+                                          final local = c.pickedPortfolioFiles;
+                                          final total =
+                                              net.length + local.length;
+
+                                          return GridView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            itemCount: total == 0 ? 4 : total,
+                                            gridDelegate:
+                                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                                  crossAxisCount: 2,
+                                                  crossAxisSpacing: 10,
+                                                  mainAxisSpacing: 10,
+                                                ),
+                                            itemBuilder: (ctx, i) {
+                                              if (total == 0) {
+                                                return _PlaceholderTile(
+                                                  purple: kPurple,
+                                                );
+                                              }
+
+                                              if (i < net.length) {
+                                                final url = net[i];
+                                                return ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child: Image.network(
+                                                    url,
+                                                    fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                    height: double.infinity,
+                                                  ),
+                                                );
+                                              }
+
+                                              final localIndex = i - net.length;
+                                              final f = local[localIndex];
+
+                                              return Stack(
+                                                children: [
+                                                  ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    child: Image.file(
+                                                      f,
+                                                      fit: BoxFit.cover,
+                                                      width: double.infinity,
+                                                      height: double.infinity,
+                                                    ),
+                                                  ),
+                                                  if (c.isEditing)
+                                                    Positioned(
+                                                      top: 6,
+                                                      right: 6,
+                                                      child: IconButton(
+                                                        onPressed: () =>
+                                                            c.removePortfolioAt(
+                                                              localIndex,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons.close,
+                                                          color: Colors.red,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // Rating
+                                _InnerBox(
+                                  borderColor: kSoftBorder,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Rating",
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          const _StarsReadOnly(
+                                            value: 0.0,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            "0.0",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 14),
+
+                                // Reviews
+                                Text(
+                                  "Reviews",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _InnerBox(
+                                  borderColor: kSoftBorder,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 18,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        "No reviews yet.",
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 18),
+
+                                // Buttons (Editing: cancel/done) else reset/delete
+                                if (c.isEditing) ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _AdminOutlinedBtn(
+                                          text: "Cancel",
+                                          textColor: kPurple,
+                                          borderColor: kPurple.withOpacity(
+                                            0.25,
+                                          ),
+                                          onPressed: c.isSaving
+                                              ? null
+                                              : c.cancelEdit,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: kPurple,
+                                            minimumSize: const Size.fromHeight(
+                                              50,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                          ),
+                                          onPressed: c.isSaving
+                                              ? null
+                                              : () async {
+                                                  final ok =
+                                                      _formKey.currentState
+                                                          ?.validate() ??
+                                                      false;
+                                                  if (!ok) return;
+
+                                                  final saved = await c.save();
+                                                  if (!mounted) return;
+
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        saved
+                                                            ? "Saved successfully ✅"
+                                                            : "Save failed: ${c.error ?? ''}",
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                          child: c.isSaving
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Text("Done"),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ] else ...[
+                                  _AdminOutlinedBtn(
+                                    text: "Reset password",
+                                    textColor: const Color(0xFF2F7BFF),
+                                    borderColor: kPurple.withOpacity(0.25),
+                                    onPressed: () => c.goResetPassword(context),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _AdminOutlinedBtn(
+                                    text: "Delete account",
+                                    textColor: Colors.red,
+                                    borderColor: kPurple.withOpacity(0.25),
+                                    onPressed: () => c.deleteAccount(context),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
           );
         },
       ),
@@ -546,12 +697,14 @@ class _FreelancerProfileViewState extends State<FreelancerProfileView> {
   }
 }
 
-// ---------- Widgets ----------
-class _Header extends StatelessWidget {
-  const _Header({
+// ---------- Unified Widgets ----------
+
+class _HeaderLikeAdmin extends StatelessWidget {
+  const _HeaderLikeAdmin({
     required this.purple,
-    required this.profile,
+    required this.headerBg,
     required this.isEditing,
+    required this.profile,
     required this.pickedImageFile,
     required this.onPickImage,
     required this.nameCtrl,
@@ -562,8 +715,10 @@ class _Header extends StatelessWidget {
   });
 
   final Color purple;
-  final FreelancerProfileModel profile;
+  final Color headerBg;
+
   final bool isEditing;
+  final FreelancerProfileModel profile;
   final File? pickedImageFile;
   final VoidCallback onPickImage;
 
@@ -576,130 +731,132 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? avatar;
+    if (pickedImageFile != null) {
+      avatar = FileImage(pickedImageFile!);
+    } else if (profile.photoUrl != null && profile.photoUrl!.isNotEmpty) {
+      avatar = NetworkImage(profile.photoUrl!);
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          height: 260,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2EAFB),
-            border: Border.all(color: purple.withOpacity(0.25)),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -160,
-                right: -160,
-                child: Container(
-                  width: 420,
-                  height: 420,
-                  decoration: const BoxDecoration(color: Color(0xFFE7DDF8), shape: BoxShape.circle),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+      child: Container(
+        height: 210,
+        decoration: BoxDecoration(
+          color: headerBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: purple.withOpacity(0.22), width: 1.2),
+        ),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: Stack(
                     children: [
-                      GestureDetector(
-                        onTap: isEditing ? onPickImage : null,
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 44,
-                              backgroundColor: Colors.white,
-                              child: CircleAvatar(
-                                radius: 41,
-                                backgroundColor: const Color(0xFFF2EAFB),
-                                backgroundImage: pickedImageFile != null
-                                    ? FileImage(pickedImageFile!)
-                                    : (profile.photoUrl != null
-                                        ? NetworkImage(profile.photoUrl!) as ImageProvider
-                                        : null),
-                                child: (pickedImageFile == null && profile.photoUrl == null)
-                                    ? Icon(Icons.person, color: purple, size: 34)
-                                    : null,
-                              ),
-                            ),
-                            if (isEditing)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 26,
-                                  height: 26,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: purple.withOpacity(0.35)),
-                                  ),
-                                  child: Icon(Icons.camera_alt, size: 14, color: purple),
+                      Center(
+                        child: CircleAvatar(
+                          radius: 44,
+                          backgroundColor: Colors.white,
+                          child: CircleAvatar(
+                            radius: 41,
+                            backgroundColor: headerBg,
+                            backgroundImage: avatar,
+                            child: avatar == null
+                                ? Icon(Icons.person, color: purple, size: 34)
+                                : null,
+                          ),
+                        ),
+                      ),
+                      if (isEditing)
+                        Positioned(
+                          right: 10,
+                          bottom: 8,
+                          child: GestureDetector(
+                            onTap: onPickImage,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: purple,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 240,
-                            child: TextFormField(
-                              controller: nameCtrl,
-                              enabled: isEditing,
-                              validator: nameValidator,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: purple, fontSize: 28, fontWeight: FontWeight.w800),
-                              decoration: const InputDecoration(
-                                hintText: 'Enter your job title (e.g., Graphic Designer)', 
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                errorBorder: InputBorder.none,
-                                isDense: true,
+                              child: const Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 18,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          if (!isEditing)
-                            IconButton(
-                              onPressed: onEditTap,
-                              icon: Icon(Icons.edit, color: purple, size: 20),
-                            ),
-                        ],
-                      ),
-
-                      SizedBox(
-                        width: 260,
-                        child: TextFormField(
-                          controller: titleCtrl,
-                          enabled: isEditing,
-                          validator: titleValidator,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            isDense: true,
-                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 240,
+                      child: TextFormField(
+                        controller: nameCtrl,
+                        enabled: isEditing,
+                        validator: nameValidator,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: purple,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (!isEditing)
+                      IconButton(
+                        onPressed: onEditTap,
+                        icon: Icon(Icons.edit, color: purple, size: 20),
+                      ),
+                  ],
+                ),
+
+                TextFormField(
+                  controller: titleCtrl,
+                  enabled: isEditing,
+                  validator: titleValidator,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -707,26 +864,61 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child, required this.borderColor, this.background});
-
+class _InnerBox extends StatelessWidget {
+  const _InnerBox({required this.child, required this.borderColor});
   final Widget child;
   final Color borderColor;
-  final Color? background;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: background ?? Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 6)),
-        ],
       ),
       child: child,
+    );
+  }
+}
+
+class _AdminOutlinedBtn extends StatelessWidget {
+  const _AdminOutlinedBtn({
+    required this.text,
+    required this.textColor,
+    required this.borderColor,
+    required this.onPressed,
+  });
+
+  final String text;
+  final Color textColor;
+  final Color borderColor;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: BorderSide(color: borderColor, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -761,13 +953,20 @@ class _EditableField extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: purple.withOpacity(0.35), width: 1.2),
+      borderSide: BorderSide(color: purple.withOpacity(0.25), width: 1.2),
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -781,13 +980,23 @@ class _EditableField extends StatelessWidget {
             hintText: hintText,
             counterText: counterText ?? "",
             filled: true,
-            fillColor: Colors.white.withOpacity(0.75),
+            fillColor: Colors.white,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             border: border,
             enabledBorder: border,
-            focusedBorder: border.copyWith(borderSide: BorderSide(color: purple, width: 1.4)),
-            disabledBorder: border.copyWith(borderSide: BorderSide(color: purple.withOpacity(0.18), width: 1.2)),
+            focusedBorder: border.copyWith(
+              borderSide: BorderSide(color: purple, width: 1.4),
+            ),
+            disabledBorder: border.copyWith(
+              borderSide: BorderSide(
+                color: purple.withOpacity(0.18),
+                width: 1.2,
+              ),
+            ),
           ),
         ),
       ],
@@ -796,7 +1005,11 @@ class _EditableField extends StatelessWidget {
 }
 
 class _ReadOnlyBlock extends StatelessWidget {
-  const _ReadOnlyBlock({required this.title, required this.value, required this.purple});
+  const _ReadOnlyBlock({
+    required this.title,
+    required this.value,
+    required this.purple,
+  });
 
   final String title;
   final String value;
@@ -807,9 +1020,23 @@ class _ReadOnlyBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(color: purple, fontSize: 22, fontWeight: FontWeight.w800)),
+        Text(
+          value,
+          style: TextStyle(
+            color: purple,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ],
     );
   }
@@ -837,7 +1064,7 @@ class _ExperienceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: purple.withOpacity(0.25)),
+        border: Border.all(color: purple.withOpacity(0.22), width: 1.2),
       ),
       child: Row(
         children: [
@@ -848,17 +1075,35 @@ class _ExperienceCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(experience.field, style: const TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 2),
-              Text(experience.org, style: TextStyle(color: purple, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Text(experience.period, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  experience.field,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  experience.org,
+                  style: TextStyle(color: purple, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  experience.period,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            ),
           ),
           if (editable) ...[
-            IconButton(onPressed: onEdit, icon: const Icon(Icons.edit, size: 18)),
-            IconButton(onPressed: onDelete, icon: const Icon(Icons.delete, size: 18, color: Colors.red)),
+            IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit, size: 18),
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+            ),
           ],
         ],
       ),
@@ -879,30 +1124,6 @@ class _PlaceholderTile extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE6E6E6)),
       ),
       child: Icon(Icons.image, color: purple),
-    );
-  }
-}
-
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.text, required this.color, required this.onPressed});
-
-  final String text;
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: Colors.grey.shade300),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        backgroundColor: Colors.white.withOpacity(0.6),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
@@ -941,7 +1162,7 @@ class _SegmentBar extends StatelessWidget {
   });
 
   final List<String> options;
-  final String value;
+  final String? value;
   final bool enabled;
   final void Function(String v) onChanged;
   final Color purple;
@@ -953,7 +1174,7 @@ class _SegmentBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: purple.withOpacity(0.25)),
+        border: Border.all(color: purple.withOpacity(0.25), width: 1.2),
       ),
       child: Row(
         children: options.map((o) {
@@ -966,7 +1187,9 @@ class _SegmentBar extends StatelessWidget {
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: selected ? purple.withOpacity(0.14) : Colors.transparent,
+                  color: selected
+                      ? purple.withOpacity(0.14)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
